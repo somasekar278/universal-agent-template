@@ -1,0 +1,55 @@
+# Advanced agent configuration example
+#
+# Shows all available configuration options and different execution modes.
+
+agents:
+  # Critical path agent - inline execution (fast!)
+  velocity_checker:
+    class: "agents.examples.VelocityCheckerAgent"
+    enabled: true
+    execution_mode: "in_process"  # Run in same process (fastest)
+    timeout: 1  # Must be fast - 1 second max
+    retry_policy: "none"  # Don't retry critical path
+    max_retries: 0
+    threshold: 0.0  # Apply to all transactions
+    
+    # Custom config for this agent
+    lookback_window_hours: 24
+    anomaly_threshold: 3.0
+  
+  # Enrichment agent - async execution with Ray
+  risk_narrative:
+    class: "agents.examples.RiskNarrativeAgent"
+    enabled: true
+    execution_mode: "ray_task"  # Ephemeral Ray task
+    timeout: 30
+    retry_policy: "exponential"
+    max_retries: 3
+    threshold: 0.7
+    
+    # Custom config
+    model_name: "meta-llama/Llama-3.3-70B-Instruct"
+    temperature: 0.1
+    max_tokens: 500
+  
+  # Another enrichment agent - process pool execution
+  fraud_explainer:
+    class: "agents.examples.FraudExplainerAgent"
+    enabled: true
+    execution_mode: "process_pool"  # Process pool for bin-packing
+    timeout: 20
+    retry_policy: "exponential"
+    max_retries: 2
+    threshold: 0.8  # Only for very high-risk
+    
+    # Custom config
+    explanation_detail: "detailed"
+    include_similar_cases: true
+  
+  # Disabled agent (useful for A/B testing)
+  experimental_agent:
+    class: "agents.examples.ExperimentalAgent"
+    enabled: false  # Won't be loaded
+    execution_mode: "async"
+    timeout: 30
+

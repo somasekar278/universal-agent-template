@@ -1,0 +1,65 @@
+# Customer B - Fully Custom Schema
+# 
+# Customer has completely different schema - use ConfigurableAdapter
+
+customer_id: "customer_b"
+adapter_class: "ConfigurableTransactionAdapter"
+
+config:
+  # Map customer fields to our canonical schema
+  field_mappings:
+    # Transaction core fields
+    id: "txn.transaction_ref"
+    timestamp: "txn.created_timestamp"
+    amount: "txn.total_amount"
+    currency: "txn.currency_iso"
+    status: "txn.processing_status"
+    
+    # Payment method
+    payment_method.type: "payment.type"
+    payment_method.bin: "payment.card_details.bank_id_number"
+    payment_method.last4: "payment.card_details.last_four"
+    payment_method.issuer_country: "payment.card_details.issuing_country"
+    payment_method.card_brand: "payment.card_details.network"
+    
+    # Customer
+    customer.id: "user.id"
+    customer.country: "user.billing_address.country_code"
+    customer.account_age_days: "user.account_age"
+    customer.prior_disputes: "user.dispute_count"
+    customer.email_verified: "user.email_status.verified"
+    customer.phone_verified: "user.phone_status.verified"
+    
+    # Merchant
+    merchant.id: "seller.merchant_code"
+    merchant.country: "seller.business_country"
+    merchant.category: "seller.mcc_code"
+    merchant.is_verified: "seller.kyc_complete"
+    
+    # Device
+    device.ip: "session.ip_address"
+    device.fingerprint_id: "session.device_id"
+    device.is_vpn: "session.vpn_detected"
+    device.user_agent: "session.browser_agent"
+  
+  # Transformations to apply
+  transformations:
+    # Amount is in cents, convert to decimal
+    amount:
+      divide: 100
+    
+    # Currency needs to be uppercase
+    currency:
+      uppercase: true
+    
+    # Timestamp is Unix epoch
+    timestamp:
+      from_unix: true
+  
+  # Default values for fields not in customer schema
+  defaults:
+    device.is_proxy: false
+    device.is_tor: false
+    merchant.avg_txn_amount_30d: null
+    customer.total_transaction_count: null
+

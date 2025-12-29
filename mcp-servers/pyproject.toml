@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "databricks-mcp-servers"
+version = "0.1.0"
+description = "MCP servers for Databricks operations (SQL Warehouse, Unity Catalog, Lakebase)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "SOTA Agent Team"}
+]
+keywords = ["mcp", "databricks", "model-context-protocol"]
+
+dependencies = [
+    # Core MCP
+    "mcp>=0.1.0",
+    
+    # Databricks
+    "databricks-sdk>=0.20.0",
+    "databricks-sql-connector>=3.0.0",
+    
+    # Data handling
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    
+    # Async
+    "httpx>=0.25.0",
+    "aiofiles>=23.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/databricks-mcp-servers"
+Repository = "https://github.com/your-org/databricks-mcp-servers"
+
+[tool.setuptools]
+packages = ["databricks_mcp"]
+
+[tool.setuptools.package-data]
+databricks_mcp = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+

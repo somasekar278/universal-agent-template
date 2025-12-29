@@ -1,0 +1,39 @@
+# Customer SLA-driven configuration example
+#
+# Shows how customers configure agents based on their SLA requirements.
+# They can easily switch between inline and async based on performance testing.
+
+agents:
+  # Scenario 1: Tight SLA (50ms) - only fast inline agents
+  fast_ml_scorer:
+    class: "agents.examples.FastMLScorerAgent"
+    enabled: true
+    execution_mode: "inline"  # Must be inline for tight SLA
+    timeout: 0.05  # 50ms strict limit
+    threshold: 0.0
+  
+  # All enrichment runs async - doesn't block pipeline
+  narrative_enrichment:
+    class: "agents.examples.NarrativeAgent"
+    enabled: true
+    execution_mode: "async"  # Background processing
+    timeout: 60
+    threshold: 0.6
+  
+  alert_generator:
+    class: "agents.examples.AlertGeneratorAgent"
+    enabled: true
+    execution_mode: "async"  # Background processing
+    timeout: 30
+    threshold: 0.8
+  
+  # Scenario 2: Relaxed SLA (500ms) - can run some enrichment inline
+  # Uncomment if SLA allows:
+  #
+  # quick_narrative:
+  #   class: "agents.examples.QuickNarrativeAgent"
+  #   enabled: true
+  #   execution_mode: "inline"  # Fast enough for 500ms SLA
+  #   timeout: 0.2  # 200ms
+  #   threshold: 0.7
+

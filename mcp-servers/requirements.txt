@@ -1,0 +1,28 @@
+# MCP Servers - Standalone Dependencies
+# These are ONLY for MCP servers, not the main agent project
+
+# Core MCP
+mcp>=0.1.0
+
+# Databricks SDK
+databricks-sdk>=0.20.0
+databricks-sql-connector>=3.0.0
+
+# Data validation
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Configuration
+python-dotenv>=1.0.0
+pyyaml>=6.0
+
+# Async HTTP
+httpx>=0.25.0
+aiofiles>=23.0.0
+
+# Development
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+ruff>=0.1.0
+

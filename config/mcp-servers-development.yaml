@@ -1,0 +1,29 @@
+# MCP Server Configuration - Development Environment
+#
+# MCP servers run locally (same machine, different processes)
+
+mcp_servers:
+  databricks-sql:
+    url: http://localhost:3001
+    type: http
+    # Could also use stdio for development:
+    # type: stdio
+    # command: python
+    # args:
+    #   - mcp-servers/databricks-sql/server.py
+  
+  unity-catalog:
+    url: http://localhost:3002
+    type: http
+  
+  lakebase:
+    url: http://localhost:3003
+    type: http
+
+# Databricks connection (from Terraform outputs)
+databricks:
+  host: ${DATABRICKS_HOST}
+  token: ${DATABRICKS_TOKEN}
+  warehouse_id: ${DATABRICKS_WAREHOUSE_ID}
+  catalog: ${DATABRICKS_CATALOG}
+

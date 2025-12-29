@@ -1,0 +1,22 @@
+# Basic agent configuration example
+#
+# This shows the minimal configuration needed to use agents.
+# Customers can copy and modify this for their pipeline.
+
+agents:
+  # Fast risk scoring agent - runs inline in pipeline
+  risk_scorer:
+    class: "agents.examples.RiskScoringAgent"
+    enabled: true
+    execution_mode: "inline"  # Fast enough to run synchronously
+    timeout: 5  # 5 seconds max
+    threshold: 0.5  # Apply to transactions with score > 0.5
+  
+  # Narrative generation agent - runs async (doesn't block pipeline)
+  narrative:
+    class: "agents.examples.NarrativeAgent"
+    enabled: true
+    execution_mode: "async"  # Runs in background
+    timeout: 30  # 30 seconds max
+    threshold: 0.7  # Only for high-risk transactions (score > 0.7)
+

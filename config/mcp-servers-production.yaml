@@ -1,0 +1,30 @@
+# MCP Server Configuration - Production Environment
+#
+# MCP servers run as separate services (potentially in different project/repo)
+
+mcp_servers:
+  databricks-sql:
+    url: https://mcp-databricks-sql.yourcompany.com
+    type: http
+    timeout: 30
+    retry_attempts: 3
+  
+  unity-catalog:
+    url: https://mcp-unity-catalog.yourcompany.com
+    type: http
+    timeout: 30
+    retry_attempts: 3
+  
+  lakebase:
+    url: https://mcp-lakebase.yourcompany.com
+    type: http
+    timeout: 30
+    retry_attempts: 3
+
+# Databricks connection
+databricks:
+  host: ${DATABRICKS_HOST}
+  token: ${DATABRICKS_TOKEN}
+  warehouse_id: ${DATABRICKS_WAREHOUSE_ID}
+  catalog: ${DATABRICKS_CATALOG}
+

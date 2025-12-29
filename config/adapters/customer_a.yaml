@@ -1,0 +1,21 @@
+# Customer A - Schema Adapter Configuration
+# 
+# Customer uses Stripe-like schema with some custom fields
+
+customer_id: "customer_a"
+adapter_class: "StripeTransactionAdapter"
+
+# Optional: Override default behavior
+config:
+  # Default values for missing fields
+  defaults:
+    customer:
+      account_age_days: 0
+      prior_disputes: 0
+    merchant:
+      category: "retail"
+  
+  # Custom field mappings (if needed)
+  custom_mappings:
+    risk_score_field: "metadata.ml_fraud_score"
+
