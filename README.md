@@ -18,9 +18,14 @@ Originally designed for fraud detection, this architecture template applies to *
 ### One-Time Setup (30 seconds)
 
 ```bash
-# Install framework (do this once)
-pip install -r requirements.txt
-pip install -e .
+# Run setup script (Mac/Linux)
+./setup.sh
+
+# Or on Windows
+setup.bat
+
+# Or manually
+pip install -r requirements.txt && pip install -e .
 ```
 
 ### Generate Projects (Anytime)

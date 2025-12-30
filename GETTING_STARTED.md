@@ -14,6 +14,12 @@ A universal template for integrating AI agents into applications and data pipeli
 
 ```bash
 cd "/path/to/SOTA Agent Framework"  # Or wherever you cloned it
+
+# Run setup script (easiest!)
+./setup.sh          # Mac/Linux
+# or setup.bat      # Windows
+
+# Or install manually
 pip install -r requirements.txt
 pip install -e .
 ```

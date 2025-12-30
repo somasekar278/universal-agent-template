@@ -11,16 +11,29 @@ The generated project **works immediately** with zero additional setup.
 
 ## ✅ One-Time Setup (Run These Commands)
 
-### Step 1: Install Framework Dependencies
+### Easiest Way: Run Setup Script
 
 ```bash
 cd "/Users/som.natarajan/SOTA Agent Framework"
-pip install -r requirements.txt
+
+# Mac/Linux
+./setup.sh
+
+# Windows
+setup.bat
 ```
 
-### Step 2: Install Framework as Package
+### Manual Setup (Alternative)
+
+If the script doesn't work:
 
 ```bash
+cd "/Users/som.natarajan/SOTA Agent Framework"
+
+# Step 1: Install dependencies
+pip install -r requirements.txt
+
+# Step 2: Install framework
 pip install -e .
 ```
 
@@ -33,8 +46,7 @@ pip install --user -e .
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Mac/Linux
-pip install -r requirements.txt
-pip install -e .
+./setup.sh  # Run the script, or install manually
 ```
 
 ## 🚀 Now Generate Projects Seamlessly
