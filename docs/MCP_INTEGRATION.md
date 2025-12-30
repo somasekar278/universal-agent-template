@@ -2,9 +2,11 @@
 
 **Model Context Protocol (MCP)** integration for SOTA Agent Framework.
 
+**Compatible with MCP v1.25.0+**
+
 ## Overview
 
-MCP enables agents to connect to external tools and data sources through a standardized protocol. The framework provides built-in MCP client support for seamless integration.
+MCP enables agents to connect to external tools and data sources through a standardized protocol. The framework provides built-in MCP client support for seamless integration with stdio-based MCP servers.
 
 ## Quick Start
 
@@ -66,22 +68,27 @@ Create `config/mcp_config.yaml`:
 
 ```yaml
 mcp_servers:
-  databricks_sql:
-    url: "http://localhost:8001"
-    timeout: 30
+  databricks-sql:
+    command: python
+    args: ["mcp-servers/databricks_sql_server.py"]
+    env:
+      DATABRICKS_HOST: "${DATABRICKS_HOST}"
+      DATABRICKS_TOKEN: "${DATABRICKS_TOKEN}"
     
   enrichment:
-    url: "http://localhost:8002"
-    timeout: 30
+    command: python
+    args: ["mcp-servers/enrichment_server.py"]
+    env:
+      API_KEY: "${ENRICHMENT_API_KEY}"
     
-  graph:
-    url: "http://localhost:8003"
-    timeout: 30
-
-# Optional authentication
-auth:
-  api_key: "${MCP_API_KEY}"
+  lakebase:
+    command: python
+    args: ["mcp-servers/lakebase_server.py"]
+    env:
+      LAKEBASE_URL: "${LAKEBASE_URL}"
 ```
+
+**Note**: MCP v1.25.0+ uses stdio-based communication with servers run as subprocesses.
 
 ## Available MCP Tools
 

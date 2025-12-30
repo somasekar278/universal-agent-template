@@ -57,7 +57,7 @@ For more information, visit: https://github.com/somasekar278/universal-agent-tem
     parser.add_argument(
         "--version",
         action="version",
-        version="SOTA Agent Framework 0.1.5"
+        version="SOTA Agent Framework 0.1.6"
     )
     
     args = parser.parse_args()
