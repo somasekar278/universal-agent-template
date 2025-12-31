@@ -36,6 +36,14 @@
   - Prompt Optimization
   - Agent Benchmarking
 
+### Deploy to Production
+- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - 🚀 **NEW** Deploy your agent solutions:
+  - Docker & Docker Compose
+  - Kubernetes (with HPA)
+  - Databricks (Jobs & Model Serving)
+  - Serverless (AWS Lambda, GCP Functions)
+  - CI/CD Pipelines (GitHub Actions)
+
 ---
 
 ## 🎯 Quick Decision Tree

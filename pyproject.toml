@@ -162,6 +162,7 @@ sota-setup = "sota_agent.setup_wizard:main"
 sota-advisor = "sota_agent.advisor:main"
 sota-learn = "sota_agent.learn:main"
 sota-architect = "sota_agent.architect:main"
+sota-deploy = "sota_agent.deploy:main"
 
 [tool.black]
 line-length = 100

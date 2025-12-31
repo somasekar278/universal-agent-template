@@ -90,9 +90,10 @@ from orchestration import AgentWorkflowGraph
 
 ### Developer Experience
 - 🎯 **Progressive Disclosure** - Strong defaults for beginners, full control for experts
-- 🤖 **AI-Powered Tools** - `sota-architect` (AI recommendations), `sota-setup`, `sota-generate`, `sota-advisor`, `sota-benchmark`, `sota-learn`
+- 🤖 **AI-Powered Tools** - `sota-architect`, `sota-setup`, `sota-generate`, `sota-advisor`, `sota-benchmark`, `sota-learn`, `sota-deploy`
 - 📚 **8 Core Docs** - Clear, concise, use-case driven
 - 🔍 **Use-Case Guidance** - Know exactly which features you need
+- 🚀 **Deployment Ready** - Docker, K8s, Databricks, Serverless templates included
 
 ---
 
@@ -168,6 +169,11 @@ sota-advisor ./project
 
 # Run benchmarks & evaluations
 sota-benchmark run --suite fraud_detection --report md
+
+# Deploy to production (NEW!)
+sota-deploy init --platform kubernetes  # Generate deployment configs
+sota-deploy build --tag v1.0.0          # Build Docker image
+sota-deploy status                       # Check deployment readiness
 ```
 
 ---
