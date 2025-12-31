@@ -25,6 +25,13 @@ pip install sota-agent-framework[optimization]  # DSPy + TextGrad
 
 ### Choose Your Path
 
+**🤖 Have a Use Case? (NEW! - AI-Powered)**
+```bash
+sota-architect "Build a fraud detection system with memory and self-improvement"
+# → Instant architecture recommendation: Level, schemas, features, integrations!
+```
+Describe your use case in natural language, get instant architecture recommendations.
+
 **🎓 Want to Learn? (NEW!)**
 ```bash
 sota-learn  # Interactive learning mode - build 5 progressively complex examples
@@ -79,7 +86,7 @@ from orchestration import AgentWorkflowGraph
 
 ### Developer Experience
 - 🎯 **Progressive Disclosure** - Strong defaults for beginners, full control for experts
-- 🤖 **CLI Tools** - `sota-setup`, `sota-generate`, `sota-advisor`, `sota-benchmark`
+- 🤖 **AI-Powered Tools** - `sota-architect` (AI recommendations), `sota-setup`, `sota-generate`, `sota-advisor`, `sota-benchmark`, `sota-learn`
 - 📚 **8 Core Docs** - Clear, concise, use-case driven
 - 🔍 **Use-Case Guidance** - Know exactly which features you need
 

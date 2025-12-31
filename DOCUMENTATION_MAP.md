@@ -15,6 +15,7 @@
 ## 📖 Core Documentation (6 Focused Guides)
 
 ### Learning & Getting Started
+- **[docs/ARCHITECTURE_ADVISOR.md](docs/ARCHITECTURE_ADVISOR.md)** - 🤖 **NEW** AI-powered architecture recommendations from briefs
 - **[docs/LEARNING_PATH.md](docs/LEARNING_PATH.md)** - 🎓 **NEW** Learn by building (5 progressively complex examples)
 - **[docs/LEARNING_SCHEMAS.md](docs/LEARNING_SCHEMAS.md)** - 📋 **NEW** Generic schemas for all learning levels (domain-agnostic)
 - **[examples/learning_agents_generic.py](examples/learning_agents_generic.py)** - 💻 **NEW** Example agents using generic schemas
