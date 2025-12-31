@@ -81,10 +81,12 @@ LEVELS = {
     },
     "5": {
         "name": "Autonomous Multi-Agent System",
-        "description": "Full SOTA system with all features",
+        "description": "Full SOTA system with all features + A2A protocol",
         "time": "8-12 hours",
         "complexity": "⭐⭐⭐⭐⭐ SOTA",
         "learns": [
+            "Official A2A protocol (Linux Foundation standard)",
+            "Cross-framework agent communication",
             "MCP integration",
             "Semantic embeddings & memory graphs",
             "Unity Catalog integration",
@@ -92,7 +94,7 @@ LEVELS = {
             "Complete observability"
         ],
         "validates": [
-            "agents.mcp_client", "memory.embeddings",
+            "agents.a2a", "agents.mcp_client", "memory.embeddings",
             "uc_registry.prompt_registry", "infra"
         ]
     }

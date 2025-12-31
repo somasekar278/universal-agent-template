@@ -81,6 +81,35 @@ from .optimization import (
     StreamingOutput,
 )
 
+# Generic schemas for learning path (Levels 1-5)
+from .learning import (
+    # Level 1: Simple Chatbot
+    ChatInput,
+    ChatOutput,
+    # Level 2: Context-Aware
+    ContextAwareInput,
+    ContextAwareOutput,
+    # Level 3: Production API
+    APIRequest,
+    APIResponse,
+    HealthCheckResponse,
+    # Level 4: Complex Workflow
+    WorkflowInput,
+    WorkflowOutput,
+    TaskStep,
+    TaskStatus,
+    # Level 5: Multi-Agent
+    CollaborationRequest,
+    CollaborationResponse,
+    AgentCapabilityInfo,
+    # Universal (all levels)
+    UniversalInput,
+    UniversalOutput,
+    # Helpers
+    get_input_schema_for_level,
+    get_output_schema_for_level,
+)
+
 __all__ = [
     # Transactions
     "Transaction",
@@ -138,5 +167,24 @@ __all__ = [
     "DSPyOptimizerMetadata",
     "HighRiskSelectionMetadata",
     "StreamingOutput",
+    # Learning Path Schemas (Generic)
+    "ChatInput",
+    "ChatOutput",
+    "ContextAwareInput",
+    "ContextAwareOutput",
+    "APIRequest",
+    "APIResponse",
+    "HealthCheckResponse",
+    "WorkflowInput",
+    "WorkflowOutput",
+    "TaskStep",
+    "TaskStatus",
+    "CollaborationRequest",
+    "CollaborationResponse",
+    "AgentCapabilityInfo",
+    "UniversalInput",
+    "UniversalOutput",
+    "get_input_schema_for_level",
+    "get_output_schema_for_level",
 ]
 

@@ -56,16 +56,27 @@ class Agent(ABC):
     execution_priority: ExecutionPriority = ExecutionPriority.NORMAL
     timeout_seconds: int = 30
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, 
+        config: Optional[Dict[str, Any]] = None,
+        router: Optional[Any] = None,
+        a2a: Optional[Any] = None
+    ):
         """
         Initialize agent.
         
         Args:
             config: Optional configuration dictionary
+            router: Optional AgentRouter for calling other agents (opt-in)
+            a2a: Optional A2A client for peer communication (opt-in)
         """
         self.config = config or {}
         self.agent_id = f"{self.__class__.__name__}_{id(self)}"
         self._initialized_at = datetime.utcnow()
+        
+        # Optional communication patterns
+        self.router = router  # Centralized routing (use when workflow is known)
+        self.a2a = a2a        # Agent-to-agent communication (use for autonomy)
     
     @abstractmethod
     async def process(self, request: AgentInput) -> AgentOutput:
@@ -112,6 +123,191 @@ class Agent(ABC):
         Override in subclasses if needed.
         """
         pass
+    
+    # Communication helper methods (opt-in)
+    
+    async def call_agent(
+        self, 
+        agent_name: str, 
+        request: AgentInput
+    ) -> AgentOutput:
+        """
+        Call another agent via router (centralized routing).
+        
+        Requires router to be configured.
+        Use this for structured, predictable workflows.
+        
+        Args:
+            agent_name: Name of agent to call
+            request: Agent input
+            
+        Returns:
+            Agent output
+            
+        Raises:
+            ValueError: If router not configured
+            
+        Example:
+            class CoordinatorAgent(Agent):
+                async def process(self, request):
+                    fraud_result = await self.call_agent("fraud_detector", request)
+                    return fraud_result
+        """
+        if not self.router:
+            raise ValueError(
+                f"Agent {self.agent_id} cannot call other agents: "
+                "router not configured. Pass router= in __init__"
+            )
+        
+        return await self.router.route(agent_name, request)
+    
+    async def send_message(
+        self, 
+        to_agent: str, 
+        content: Dict[str, Any]
+    ) -> Any:
+        """
+        Send a message to another agent via A2A (peer-to-peer).
+        
+        Requires A2A client to be configured.
+        Use this for autonomous, dynamic communication.
+        
+        Args:
+            to_agent: Target agent ID
+            content: Message content
+            
+        Returns:
+            Sent message
+            
+        Raises:
+            ValueError: If A2A not configured
+            
+        Example:
+            class SmartAgent(Agent):
+                async def process(self, request):
+                    await self.send_message("peer_agent", {
+                        "type": "alert",
+                        "data": alert_data
+                    })
+        """
+        if not self.a2a:
+            raise ValueError(
+                f"Agent {self.agent_id} cannot send A2A messages: "
+                "a2a client not configured. Pass a2a= in __init__"
+            )
+        
+        return await self.a2a.send_to(to_agent, content)
+    
+    async def request_from(
+        self, 
+        agent_id: str, 
+        content: Dict[str, Any],
+        timeout: float = 30.0
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Request data from another agent via A2A (request-response).
+        
+        Requires A2A client to be configured.
+        Use this for dynamic collaboration.
+        
+        Args:
+            agent_id: Target agent ID
+            content: Request content
+            timeout: Response timeout
+            
+        Returns:
+            Response content or None
+            
+        Raises:
+            ValueError: If A2A not configured
+            
+        Example:
+            class SmartAgent(Agent):
+                async def process(self, request):
+                    response = await self.request_from(
+                        "analysis_agent",
+                        {"data": data_to_analyze}
+                    )
+                    if response:
+                        return self.use_analysis(response)
+        """
+        if not self.a2a:
+            raise ValueError(
+                f"Agent {self.agent_id} cannot make A2A requests: "
+                "a2a client not configured. Pass a2a= in __init__"
+            )
+        
+        return await self.a2a.request_from(agent_id, content, timeout)
+    
+    async def broadcast(
+        self, 
+        content: Dict[str, Any]
+    ) -> Any:
+        """
+        Broadcast a message to all agents via A2A.
+        
+        Requires A2A client to be configured.
+        Use this for system-wide notifications.
+        
+        Args:
+            content: Message content
+            
+        Returns:
+            Broadcast message
+            
+        Raises:
+            ValueError: If A2A not configured
+            
+        Example:
+            class MonitorAgent(Agent):
+                async def process(self, request):
+                    if self.detect_anomaly(request):
+                        await self.broadcast({
+                            "type": "anomaly_alert",
+                            "severity": "high"
+                        })
+        """
+        if not self.a2a:
+            raise ValueError(
+                f"Agent {self.agent_id} cannot broadcast: "
+                "a2a client not configured. Pass a2a= in __init__"
+            )
+        
+        return await self.a2a.broadcast(content)
+    
+    async def discover_peers(
+        self, 
+        capability: Optional[str] = None
+    ) -> list:
+        """
+        Discover peer agents via A2A.
+        
+        Requires A2A client to be configured.
+        Use this for dynamic agent discovery.
+        
+        Args:
+            capability: Filter by capability
+            
+        Returns:
+            List of agent capabilities
+            
+        Raises:
+            ValueError: If A2A not configured
+            
+        Example:
+            class SmartAgent(Agent):
+                async def process(self, request):
+                    peers = await self.discover_peers(capability="fraud_detection")
+                    for peer in peers:
+                        await self.request_from(peer.agent_id, ...)
+        """
+        if not self.a2a:
+            raise ValueError(
+                f"Agent {self.agent_id} cannot discover peers: "
+                "a2a client not configured. Pass a2a= in __init__"
+            )
+        
+        return await self.a2a.discover_peers(capability)
     
     def process_sync(self, request: AgentInput) -> AgentOutput:
         """

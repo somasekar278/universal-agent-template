@@ -67,6 +67,7 @@ from orchestration import AgentWorkflowGraph
 - 🧠 **Agent-Governed Memory** - Smart storage, retrieval, reflection, forgetting
 - 🎯 **Reasoning Optimization** - Trajectory tuning, CoT distillation, self-improvement
 - 🔄 **Plan-Act-Critique Loops** - LangGraph-powered orchestration
+- 🤝 **A2A Protocol (Official)** - Linux Foundation standard for cross-framework agent communication
 - 📊 **Comprehensive Benchmarking** - 6+ metrics, regression testing
 
 ### Production Ready

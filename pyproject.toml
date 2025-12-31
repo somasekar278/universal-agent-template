@@ -78,6 +78,11 @@ mcp = [
     "mcp>=0.1.0",
 ]
 
+# Agent2Agent Protocol (Official Linux Foundation)
+a2a = [
+    "a2a-sdk>=0.3.0",
+]
+
 # Semantic tool search
 semantic-search = [
     "sentence-transformers>=2.2.0",
@@ -117,7 +122,7 @@ ui = [
 
 # All features
 all = [
-    "sota-agent-framework[databricks,agent-frameworks,optimization,ray,mcp,semantic-search,messaging,telemetry,web,ui,monitoring]",
+    "sota-agent-framework[databricks,agent-frameworks,optimization,ray,mcp,a2a,semantic-search,messaging,telemetry,web,ui,monitoring]",
 ]
 
 # Development tools

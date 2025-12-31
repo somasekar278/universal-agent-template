@@ -1,14 +1,169 @@
 # External Integrations Guide
 
-**All external integrations in one place**: MCP, LangGraph, Databricks
+**All external integrations in one place**: A2A, MCP, LangGraph, Databricks
 
 ---
 
 ## 📋 Table of Contents
 
+- [Agent2Agent Protocol (A2A) - Official](#agent2agent-protocol-a2a)
 - [Model Context Protocol (MCP)](#model-context-protocol-mcp)
 - [LangGraph Orchestration](#langgraph-orchestration)
 - [Databricks Integration](#databricks-integration)
+
+---
+
+## 🌐 Agent2Agent Protocol (A2A)
+
+**Purpose**: Official Linux Foundation standard for cross-framework agent communication
+
+**Level**: ⭐⭐⭐⭐⭐ Advanced (Level 5)
+
+### Overview
+
+The [Agent2Agent (A2A) Protocol](https://github.com/a2aproject/A2A) is an open protocol enabling communication and interoperability between opaque agentic applications across different frameworks.
+
+**Official Resources:**
+- GitHub: https://github.com/a2aproject/A2A
+- Website: https://a2a-protocol.org/
+- Specification: https://a2a-protocol.org/docs/specification
+
+**Key Features:**
+- JSON-RPC 2.0 over HTTP(S)
+- Agent Cards for discovery
+- Task-based collaboration
+- Streaming (SSE) and push notifications
+- Enterprise security and authentication
+- Multi-framework interoperability
+
+### Quick Start
+
+```bash
+# Install with A2A support
+pip install sota-agent-framework[a2a]
+```
+
+### Exposing Agents via A2A
+
+```python
+from agents.a2a import A2AServer
+
+# Expose your agent via A2A protocol
+server = A2AServer(
+    agent=my_fraud_agent,
+    name="fraud_detector",
+    description="Advanced fraud detection agent",
+    skills=["fraud_detection", "risk_analysis"],
+    port=8080
+)
+
+# Start server
+await server.start()
+
+# Agent Card published at http://localhost:8080/card.json
+# A2A endpoint at http://localhost:8080/a2a
+# Other A2A-compliant agents can now discover and use it!
+```
+
+### Calling External A2A Agents
+
+```python
+from agents.a2a import A2AClient
+
+# Discover external agent
+client = A2AClient()
+agent_card = await client.discover(
+    "https://external-service.com/agent/card.json"
+)
+
+print(f"Found: {agent_card.name}")
+print(f"Skills: {agent_card.skills}")
+
+# Execute task on external agent
+result = await client.execute_task(
+    agent_url=agent_card.url,
+    skill="risk_analysis",
+    input_data={"transaction": transaction_data},
+    timeout=60.0
+)
+
+print(f"Result: {result}")
+```
+
+### Agent Cards
+
+Agent Cards are JSON documents describing agent capabilities:
+
+```python
+from agents.a2a import create_agent_card
+
+# Create Agent Card
+card = create_agent_card(
+    name="fraud_detector",
+    description="Advanced fraud detection agent",
+    url="http://localhost:8080/a2a",
+    skills=["fraud_detection", "risk_analysis"],
+    author="SOTA Framework",
+    supports_streaming=True
+)
+
+# Publish card
+with open("agent_card.json", "w") as f:
+    f.write(card.to_json())
+```
+
+### Integration with SOTA Agents
+
+```python
+from agents.a2a import A2AAgent
+
+# Wrap existing agent
+fraud_agent = MyFraudAgent()
+a2a_agent = A2AAgent(
+    agent=fraud_agent,
+    name="fraud_detector",
+    skills=["fraud_detection"]
+)
+
+# Call external A2A agents
+external_result = await a2a_agent.call_external_agent(
+    agent_url="http://external.com/a2a",
+    skill="deep_analysis",
+    input_data={"transaction": data}
+)
+
+# Discover agents by skill
+agents = await a2a_agent.find_agents_with_skill(
+    skill="risk_analysis",
+    marketplace_url="https://marketplace.com/api/agents"
+)
+```
+
+### Why Use A2A?
+
+**✅ Use A2A When:**
+- Building agent marketplaces
+- Need cross-framework interoperability
+- Enterprise agent ecosystems
+- Agents built on different platforms need to collaborate
+- Industry-standard compliance required
+
+**❌ Don't Use A2A When:**
+- Simple internal communication (use Router)
+- Single-framework systems (use Router)
+- Learning basics (start with Router, add A2A at Level 5)
+
+### Official SDK
+
+The official A2A SDK is maintained by the Linux Foundation:
+
+```bash
+pip install a2a-sdk
+```
+
+Our integration wraps the official SDK and integrates it seamlessly with SOTA Framework agents.
+
+**Full Documentation**: See `agents/a2a/` directory and https://a2a-protocol.org/
 
 ---
 

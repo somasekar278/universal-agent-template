@@ -433,6 +433,8 @@ print(results.to_markdown())
 **Complexity**: ⭐⭐⭐⭐⭐ SOTA
 
 ### What You'll Learn
+- ✅ **A2A Protocol** - Official Linux Foundation standard for cross-framework agent communication
+- ✅ Agent Cards for discovery and interoperability
 - ✅ MCP for standardized tool interfaces
 - ✅ Semantic embeddings for memory
 - ✅ Memory graphs for relationship tracking
@@ -443,6 +445,7 @@ print(results.to_markdown())
 
 ### What You'll Build
 A production-grade fraud detection system with:
+- **A2A-enabled agents** that can communicate with external agent frameworks
 - Multiple specialized agents (fraud detector, risk analyzer, investigator)
 - MCP servers for external tools (BIN lookup, sanctions check)
 - Semantic memory with relationship graphs
@@ -452,7 +455,52 @@ A production-grade fraud detection system with:
 
 ### Key Concepts
 
-#### **1. MCP Integration**
+#### **1. A2A Protocol (Official Linux Foundation Standard)**
+
+```python
+from agents.a2a import A2AServer, A2AClient, create_agent_card
+
+# Expose your agent via A2A protocol
+server = A2AServer(
+    agent=my_fraud_agent,
+    name="fraud_detector",
+    description="Advanced fraud detection agent",
+    skills=["fraud_detection", "risk_analysis"],
+    port=8080
+)
+await server.start()
+
+# Agent Card published at http://localhost:8080/card.json
+# Other A2A-compliant agents can now discover and use it!
+
+# Call external A2A agents
+client = A2AClient()
+external_card = await client.discover(
+    "https://external-service.com/agent/card.json"
+)
+
+result = await client.execute_task(
+    agent_url=external_card.url,
+    skill="deep_analysis",
+    input_data={"transaction": transaction_data}
+)
+```
+
+**Why?** A2A enables cross-framework interoperability. Your SOTA agents can collaborate with agents built on LangChain, AutoGPT, CrewAI, or any A2A-compliant framework. It's the industry standard backed by Google and the Linux Foundation.
+
+**Key Features:**
+- JSON-RPC 2.0 over HTTP(S)
+- Agent Cards for discovery
+- Streaming support (SSE)
+- Push notifications
+- Enterprise security and authentication
+
+**Official Resources:**
+- GitHub: https://github.com/a2aproject/A2A
+- Website: https://a2a-protocol.org/
+- Spec: https://a2a-protocol.org/docs/specification
+
+#### **2. MCP Integration**
 ```python
 from agents.mcp_client import AgentMCPClient
 
@@ -467,7 +515,7 @@ result = await mcp.call_tool("sanctions_check", {
 
 **Why?** MCP standardizes how agents call external APIs and tools.
 
-#### **2. Advanced Memory**
+#### **3. Advanced Memory**
 ```python
 from memory import MemoryManager
 from memory.embeddings import SentenceTransformerEmbeddings
@@ -496,7 +544,7 @@ patterns = graph.detect_patterns()
 
 **Why?** Advanced memory enables agents to find insights humans would miss.
 
-#### **3. Unity Catalog**
+#### **4. Unity Catalog**
 ```python
 from uc_registry import PromptRegistry, ModelRegistry
 
@@ -518,7 +566,7 @@ prompts.register_prompt(
 
 **Why?** Treat prompts and models as versioned artifacts for governance.
 
-#### **4. Databricks Deployment**
+#### **5. Databricks Deployment**
 ```hcl
 # infra/databricks/main.tf
 
@@ -598,6 +646,9 @@ resource "databricks_model_serving" "agent_endpoint" {
 - `evaluation/` - Benchmarking suite
 
 ### Level 5 Resources
+- `agents/a2a/` - Official A2A protocol integration
+- https://github.com/a2aproject/A2A - Official A2A GitHub
+- https://a2a-protocol.org/ - A2A Protocol documentation
 - `agents/mcp_client.py` - MCP integration
 - `memory/embeddings.py` - Semantic embeddings
 - `uc_registry/` - Unity Catalog

@@ -16,6 +16,8 @@
 
 ### Learning & Getting Started
 - **[docs/LEARNING_PATH.md](docs/LEARNING_PATH.md)** - 🎓 **NEW** Learn by building (5 progressively complex examples)
+- **[docs/LEARNING_SCHEMAS.md](docs/LEARNING_SCHEMAS.md)** - 📋 **NEW** Generic schemas for all learning levels (domain-agnostic)
+- **[examples/learning_agents_generic.py](examples/learning_agents_generic.py)** - 💻 **NEW** Example agents using generic schemas
 
 ### Choose Features
 - **[docs/FEATURE_SELECTION.md](docs/FEATURE_SELECTION.md)** - Which features do YOU need? (8 use cases with recommendations)
@@ -24,10 +26,11 @@
 - **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)** - Complete YAML configuration guide
 
 ### Add Integrations
-- **[docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)** - **NEW** All integrations in one:
+- **[docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)** - All integrations in one:
   - Model Context Protocol (MCP)
   - LangGraph Orchestration
   - Databricks Integration
+  - **A2A Protocol** (Official Linux Foundation standard - Level 5)
 
 ### Enable Advanced Features
 - **[docs/ADVANCED_FEATURES.md](docs/ADVANCED_FEATURES.md)** - **NEW** All advanced features in one:
