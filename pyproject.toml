@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sota-agent-framework"
-version = "0.4.2"
+version = "0.4.3"
 description = "Domain-agnostic agent framework for integrating AI agents into data pipelines"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -157,6 +157,7 @@ packages.find = {where = ["."], include = ["agents*", "shared*", "sota_agent*", 
 "*" = ["py.typed"]
 
 [project.scripts]
+agent = "sota_agent.main_cli:main"
 agent-generate = "sota_agent.cli:main"
 agent-benchmark = "sota_agent.benchmark_cli:main"
 agent-setup = "sota_agent.setup_wizard:main"
