@@ -1,0 +1,44 @@
+# {{ name }} Configuration (L2 - Assistant)
+#
+# Context-aware assistant with conversation memory.
+
+type: assistant
+name: {{ name }}
+
+# Model Configuration
+model:
+  endpoint: {{ model | default("databricks-claude-sonnet-4-5") }}
+  streaming: false  # Set to true for token-by-token streaming
+  system_prompt: |
+    You are a helpful, context-aware assistant. You remember previous conversations
+    and can refer back to them. Be concise, friendly, and personalized.
+
+# Memory Configuration (Lakebase - PostgreSQL)
+memory:
+  # Connection details (or set environment variables)
+  host: null  # Set LAKEBASE_HOST env var
+  database: null  # Set LAKEBASE_DATABASE env var
+  user: null  # Set LAKEBASE_USER env var
+  password: null  # Set LAKEBASE_PASSWORD env var
+  
+  # Memory settings
+  max_history: 20  # Maximum number of messages to keep in context
+
+# MLflow Configuration
+mlflow:
+  auto_trace: true
+  experiment: /Shared/{{ name }}
+  show_url: false  # Set to true to see MLflow trace URLs (developer mode)
+  
+  # Human feedback collection
+  assessments:
+    enabled: true
+    frequency: 5  # Collect feedback every N turns
+
+# Databricks Apps Deployment
+deployment:
+  name: {{ name }}
+  port: 8000
+  resources:
+    cpu: 2
+    memory: 4Gi

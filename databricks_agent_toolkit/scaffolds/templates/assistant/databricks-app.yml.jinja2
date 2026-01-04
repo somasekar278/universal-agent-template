@@ -1,0 +1,25 @@
+# Databricks Apps Deployment Configuration
+# Deploy with: databricks apps deploy {{ name }} --source-code-path . --app-config-file databricks-app.yml
+
+name: {{ name }}
+command: python app.py
+
+env:
+  # Databricks (auto-set by Apps)
+  - name: DATABRICKS_HOST
+  - name: DATABRICKS_CLIENT_ID
+  - name: DATABRICKS_CLIENT_SECRET
+  
+  # Lakebase connection (set these in Apps UI or via secrets)
+  - name: LAKEBASE_HOST
+    value: ""  # Set your Lakebase host
+  - name: LAKEBASE_DATABASE
+    value: ""  # Set your database name
+  - name: LAKEBASE_USER
+    value: ""  # Set your username
+  - name: LAKEBASE_PASSWORD
+    value: ""  # Set your password (use secrets!)
+
+resources:
+  cpu: 2
+  memory: 4Gi

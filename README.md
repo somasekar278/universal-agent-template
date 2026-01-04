@@ -43,8 +43,11 @@ print(response["content"])
 ```bash
 pip install databricks-agent-toolkit
 
-# Generate chatbot (L1 - Available in v0.1.0)
+# Generate chatbot (L1)
 databricks-agent-toolkit generate chatbot my-bot
+
+# Generate assistant with memory (L2)
+databricks-agent-toolkit generate assistant my-assistant
 
 cd my-bot
 pip install -r requirements.txt

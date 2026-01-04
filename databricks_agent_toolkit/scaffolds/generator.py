@@ -74,10 +74,10 @@ class ScaffoldGenerator:
         """
         options = options or {}
         
-        # Validate level (only chatbot available in v0.1.0)
-        valid_levels = ["chatbot"]
+        # Validate level
+        valid_levels = ["chatbot", "assistant"]
         if level not in valid_levels:
-            raise ValueError(f"Invalid level: {level}. Currently only 'chatbot' is available. More scaffolds coming in future releases.")
+            raise ValueError(f"Invalid level: {level}. Currently available: {', '.join(valid_levels)}. More scaffolds (api, workflow, system) coming in future releases.")
         
         # Create output directory
         output_path = Path(output_dir)
@@ -129,9 +129,17 @@ class ScaffoldGenerator:
                 "requirements.txt": f"{level}/requirements.txt.jinja2",
                 "databricks-app.yml": f"{level}/databricks-app.yml.jinja2",
                 "README.md": f"{level}/README.md.jinja2",
+            },
+            "assistant": {
+                "app.py": f"{level}/app.py.jinja2",
+                "assistant.py": f"{level}/assistant.py.jinja2",  # CLI version
+                "memory_manager.py": f"{level}/memory_manager.py.jinja2",
+                "config.yaml": f"{level}/config.yaml.jinja2",
+                "requirements.txt": f"{level}/requirements.txt.jinja2",
+                "databricks-app.yml": f"{level}/databricks-app.yml.jinja2",
+                "README.md": f"{level}/README.md.jinja2",
             }
             # More scaffold types coming in future releases:
-            # - assistant (L2): Context-aware with memory
             # - api (L3): FastAPI production endpoint
             # - workflow (L4): LangGraph workflows
             # - system (L5): Multi-agent with A2A

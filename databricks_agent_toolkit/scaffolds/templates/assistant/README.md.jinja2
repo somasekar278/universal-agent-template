@@ -1,0 +1,234 @@
+# {{ name }} - Context-Aware Assistant (L2)
+
+An intelligent assistant that **remembers conversations** using Lakebase (Databricks PostgreSQL).
+
+## What You'll Learn (L2)
+
+✅ **Conversation Memory** - Store and retrieve chat history  
+✅ **Lakebase Integration** - Use managed PostgreSQL for state  
+✅ **Session Management** - Track conversations by user/session  
+✅ **Context-Aware Responses** - Reference past conversations  
+✅ **MLflow Tracing** - Track all interactions
+
+---
+
+## Quick Start
+
+### 1. Set Up Lakebase
+
+Create a Lakebase instance in Databricks:
+1. Go to **Compute** → **Lakebase**
+2. Click **Create Instance**
+3. Note your connection details:
+   - Host: `your-instance.lakebase.databricks.com`
+   - Database: `agents`
+   - User: `your-user`
+   - Password: `your-password`
+
+See [Databricks Lakebase docs](https://docs.databricks.com/lakebase/) for details.
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Set Environment Variables
+
+```bash
+# Databricks
+export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
+export DATABRICKS_TOKEN="your-token"
+
+# Lakebase
+export LAKEBASE_HOST="your-instance.lakebase.databricks.com"
+export LAKEBASE_DATABASE="agents"
+export LAKEBASE_USER="your-user"
+export LAKEBASE_PASSWORD="your-password"
+```
+
+### 4. Run Locally
+
+**CLI Version:**
+```bash
+python assistant.py
+```
+
+**Web Version:**
+```bash
+python app.py
+# Visit http://localhost:8000
+```
+
+---
+
+## How It Works
+
+### Memory Flow
+
+```
+User Message
+    ↓
+Store in Lakebase (PostgreSQL)
+    ↓
+Retrieve conversation history (last 20 messages)
+    ↓
+Send to LLM with full context
+    ↓
+Store LLM response in Lakebase
+    ↓
+Return to user
+```
+
+### Session Management
+
+Each conversation has a unique `session_id`:
+- **CLI:** Generated on start, reused across the session
+- **Web:** Each browser session gets a unique ID
+- **API:** Pass `session_id` in requests
+
+### Memory Architecture
+
+```python
+# Lakebase stores conversations in PostgreSQL
+conversations
+├── id (serial)
+├── session_id (varchar)  # Unique per user/session
+├── role (varchar)         # "user" or "assistant"
+├── content (text)         # Message content
+├── timestamp (timestamp)  # When message was sent
+└── metadata (jsonb)       # Optional metadata
+```
+
+Reference: [Databricks Stateful Agents](https://docs.databricks.com/aws/en/generative-ai/agent-framework/stateful-agents)
+
+---
+
+## Configuration
+
+Edit `config.yaml` to customize:
+
+### Model Settings
+
+```yaml
+model:
+  endpoint: databricks-claude-sonnet-4-5
+  streaming: false  # Enable for token-by-token
+  system_prompt: |
+    You are a helpful assistant...
+```
+
+**Popular Models:**
+- `databricks-claude-sonnet-4-5` (recommended)
+- `databricks-gpt-5`
+- `databricks-gemini-2-5-pro`
+- `databricks-llama-4-maverick`
+
+### Memory Settings
+
+```yaml
+memory:
+  max_history: 20  # Number of messages in context window
+```
+
+**Trade-offs:**
+- **More history** = Better context, higher latency, more tokens
+- **Less history** = Faster, cheaper, but may forget earlier context
+
+---
+
+## Deploy to Databricks Apps
+
+### 1. Set Up Service Principal
+
+```bash
+export DATABRICKS_CLIENT_ID="your-sp-client-id"
+export DATABRICKS_CLIENT_SECRET="your-sp-client-secret"
+```
+
+### 2. Configure Lakebase in `databricks-app.yml`
+
+```yaml
+env:
+  - name: LAKEBASE_HOST
+    value: "your-instance.lakebase.databricks.com"
+  - name: LAKEBASE_DATABASE
+    value: "agents"
+  - name: LAKEBASE_USER
+    value: "your-user"
+  - name: LAKEBASE_PASSWORD
+    value: "your-password"  # Use secrets in production!
+```
+
+### 3. Deploy
+
+```bash
+databricks apps deploy {{ name }} \
+    --source-code-path . \
+    --app-config-file databricks-app.yml
+```
+
+### 4. Add Permissions
+
+In Databricks UI:
+1. Go to **Apps** → **{{ name }}**
+2. **Resources** → **Add Resource**
+3. Add **Model Serving** with **Can query** permission
+
+---
+
+## Advanced: Short-term vs. Long-term Memory
+
+This scaffold implements **short-term memory** (conversation history).
+
+For **long-term memory** (persistent facts across sessions):
+- See [Databricks stateful agents docs](https://docs.databricks.com/aws/en/generative-ai/agent-framework/stateful-agents)
+- Use LangGraph checkpointing for "time travel"
+- Store user preferences in separate tables
+- Implement fact extraction and summarization
+
+---
+
+## Troubleshooting
+
+### "Could not connect to Lakebase"
+- Verify `LAKEBASE_HOST`, `LAKEBASE_DATABASE`, `LAKEBASE_USER`, `LAKEBASE_PASSWORD`
+- Check Lakebase instance is running
+- Ensure network connectivity (VPC peering if needed)
+
+### "Table does not exist"
+- The assistant auto-creates the `conversations` table on first run
+- If you see errors, manually create it:
+  ```sql
+  CREATE TABLE conversations (
+      id SERIAL PRIMARY KEY,
+      session_id VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL,
+      content TEXT NOT NULL,
+      timestamp TIMESTAMP DEFAULT NOW(),
+      metadata JSONB
+  );
+  CREATE INDEX idx_session ON conversations(session_id);
+  ```
+
+### "Context window exceeded"
+- Reduce `memory.max_history` in `config.yaml`
+- Or implement conversation summarization
+
+---
+
+## Next Steps
+
+🎯 **Level Up to L3 (API)**
+- Expose as production API
+- Add authentication & rate limiting
+- Health checks & monitoring
+
+📚 **Learn More:**
+- [Databricks Lakebase](https://docs.databricks.com/lakebase/)
+- [Stateful Agents](https://docs.databricks.com/aws/en/generative-ai/agent-framework/stateful-agents)
+- [MLflow Tracing](https://mlflow.org/docs/latest/llms/tracing/index.html)
+
+---
+
+**Built with:** [Databricks Agent Toolkit](https://pypi.org/project/databricks-agent-toolkit/)

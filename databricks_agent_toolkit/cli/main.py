@@ -39,13 +39,16 @@ Examples:
   # Check authentication
   databricks-agent-toolkit auth check
   
-  # Generate chatbot (currently the only available scaffold in v0.1.0)
+  # Generate chatbot (L1 - Simple)
   databricks-agent-toolkit generate chatbot my-bot
+  
+  # Generate assistant (L2 - With Memory)
+  databricks-agent-toolkit generate assistant my-assistant
   
   # Get help on specific commands
   databricks-agent-toolkit generate --help
   
-More scaffolds (assistant, api, workflow, system) coming in future releases!
+More scaffolds (api, workflow, system) coming in future releases!
 For more info: https://github.com/databricks/databricks-agent-toolkit
         """
     )
