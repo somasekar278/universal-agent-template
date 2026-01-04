@@ -353,9 +353,18 @@ Master: Multi-agent systems, coordination, A2A
 **Jump to L3** for production-ready setup, then explore L4/L5.
 
 ### Building Something Specific?
-1. Run `agent-architect "Your use case description"`
-2. It will recommend the right level
-3. Copy that level's config as your starting point
+
+Use the decision matrix in [GETTING_STARTED.md](../../docs/GETTING_STARTED.md):
+- **Simple chat?** → L1 (chatbot)
+- **Need memory?** → L2 (assistant)
+- **Production API?** → L3 (api)
+- **Multi-step workflows?** → L4 (workflow)
+- **Multi-agent system?** → L5 (system)
+
+Or generate a scaffold:
+```bash
+databricks-agent-toolkit generate chatbot my-bot
+```
 
 ### Want Examples?
 See `examples/learning_agents_generic.py` for working code using these configs.

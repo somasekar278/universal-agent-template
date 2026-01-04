@@ -1,6 +1,6 @@
 # Getting Started Guide
 
-Quick start guide for building agents with this framework.
+Quick start guide for building agents with Databricks Agent Toolkit.
 
 ---
 
@@ -8,416 +8,280 @@ Quick start guide for building agents with this framework.
 
 ```bash
 # Basic installation
-pip install sota-agent-framework
+pip install databricks-agent-toolkit
 
-# With all features
-pip install sota-agent-framework[all]
-
-# With specific features
-pip install sota-agent-framework[databricks,optimization]
+# With Databricks integrations
+pip install databricks-agent-toolkit[databricks]
 ```
 
 ---
 
-## Choose Your Path
+## Choose Your Agent Type
 
-### 🤖 Have a Use Case? → Use `agent-architect`
+### 🤔 Which Scaffold Should I Use?
 
-Describe your use case, get instant architecture recommendations.
+| Use Case | Scaffold | Complexity | Time to Build |
+|----------|----------|------------|---------------|
+| **Simple chatbot** | `chatbot` | ⭐ | 15 min |
+| **Context-aware assistant with memory** | `assistant` | ⭐⭐ | 30 min |
+| **Production API with auth & monitoring** | `api` | ⭐⭐⭐ | 45 min |
+| **Multi-step workflow with orchestration** | `workflow` | ⭐⭐⭐⭐ | 60 min |
+| **Multi-agent system with A2A** | `system` | ⭐⭐⭐⭐⭐ | 90 min |
+
+### Decision Tree
+
+**Start here:** What's your main requirement?
+
+1. **Just need basic LLM chat?** → `chatbot`
+   - Single-turn or multi-turn conversations
+   - No memory required
+   - Quick proof-of-concept
+
+2. **Need to remember past conversations?** → `assistant`
+   - Uses Lakebase (PostgreSQL) for memory
+   - Session management
+   - Personalized responses
+
+3. **Need to expose as API for other apps?** → `api`
+   - FastAPI wrapper
+   - Authentication & rate limiting
+   - Health checks & monitoring
+   - Production-ready
+
+4. **Need complex multi-step workflows?** → `workflow`
+   - LangGraph orchestration
+   - Multiple tools/agents
+   - Error handling & retries
+   - State management
+
+5. **Building autonomous multi-agent system?** → `system`
+   - Agent-to-agent communication
+   - Supervisory agent
+   - Self-improvement
+   - MCP integration
+
+---
+
+## Option 1: Generate a Scaffold (Recommended)
+
+### Chatbot (Currently Available in v0.1.1)
 
 ```bash
-# From text
-agent-architect "Build a fraud detection system with memory and self-improvement"
+# Generate chatbot
+databricks-agent-toolkit generate chatbot my-chatbot
 
-# From document
-agent-architect --file requirements.pdf
+cd my-chatbot
+pip install -r requirements.txt
+
+# Run locally (CLI)
+python chatbot.py
+
+# Or run as web app (Databricks Apps ready)
+python app.py  # Visit http://localhost:8000
 ```
 
-**Output:**
-- Complexity level (1-5)
-- Required components
-- Technology recommendations
-- Architecture diagram
-- Sample code
-
----
-
-### 🎓 Want to Learn? → Use `agent-learn`
-
-Build 5 progressively complex examples interactively.
+### Other Scaffolds (Coming Soon)
 
 ```bash
-agent-learn
-```
+# Assistant with memory (L2)
+databricks-agent-toolkit generate assistant my-assistant
 
-**Learning Path:**
+# Production API (L3)
+databricks-agent-toolkit generate api my-api
 
-**Level 1: Simple Q&A Agent** (15 min)
-- Basic LLM interaction
-- Input/output handling
-- LangGraph basics
+# Complex workflow (L4)
+databricks-agent-toolkit generate workflow my-workflow
 
-**Level 2: Context-Aware Agent** (30 min)
-- Vector search with Lakebase
-- RAG pattern
-- Context injection
-
-**Level 3: Production API** (45 min)
-- FastAPI wrapper
-- Health checks
-- Telemetry
-- Databricks deployment
-
-**Level 4: Complex Workflow** (60 min)
-- Multi-agent orchestration
-- LangGraph StateGraph
-- Error handling
-- Optimization
-
-**Level 5: Autonomous Multi-Agent** (90 min)
-- Self-improvement
-- MCP integration
-- Continuous learning
-- Production monitoring
-
----
-
-### 🚀 New to Agents? → Use `agent-setup`
-
-Interactive wizard guides you through setup.
-
-```bash
-agent-setup
-```
-
-Configures:
-- Databricks connection
-- MLflow tracking
-- Unity Catalog
-- Telemetry
-- MCP servers
-
----
-
-### 🔧 Building an Agent? → Use `agent-generate`
-
-Generate a working agent from template.
-
-```bash
-# Generate agent
-agent-generate --domain "customer_support" --output ./my-agent
-
-# Get recommendations
-cd my-agent
-agent-advisor .
-```
-
-**Generated Structure:**
-```
-my-agent/
-├── agent.py              # Main agent logic (uses LangGraph)
-├── config.yaml           # Configuration
-├── scorers.py           # Custom MLflow scorers
-├── main.py              # FastAPI app
-├── deployment/          # Databricks Apps config
-└── tests/               # Test suite
+# Multi-agent system (L5)
+databricks-agent-toolkit generate system my-system
 ```
 
 ---
 
-## Quick Start Example
+## Option 2: Use Integrations Directly
 
-### 1. Create Agent with LangGraph
+### Basic LLM Chat
 
 ```python
+from databricks_agent_toolkit.integrations import DatabricksLLM
+
+# Initialize (auto-auth via Databricks SDK)
+llm = DatabricksLLM(endpoint="databricks-claude-sonnet-4-5")
+
+# Chat (batch)
+response = await llm.chat([
+    {"role": "user", "content": "What is RAG?"}
+])
+print(response["content"])
+
+# Chat (streaming)
+async for chunk in llm.stream([
+    {"role": "user", "content": "Explain quantum computing"}
+]):
+    print(chunk["content"], end="")
+```
+
+### Add Memory (Lakebase - PostgreSQL)
+
+```python
+from databricks_agent_toolkit.integrations import Lakebase
+
+# Initialize
+lakebase = Lakebase()
+
+# Create conversations table (one-time)
+lakebase.create_conversations_table()
+
+# Store conversation
+lakebase.store_message(
+    session_id="user_123",
+    role="user",
+    content="Hello!"
+)
+
+# Get conversation history
+history = lakebase.get_conversation_history(session_id="user_123")
+```
+
+### Add Vector Search (Delta Lake)
+
+```python
+from databricks_agent_toolkit.integrations import DatabricksVectorSearch
+
+# Initialize
+vector_search = DatabricksVectorSearch()
+
+# Create index (one-time)
+vector_search.create_index(
+    name="main.docs.knowledge_base",
+    source_table="main.docs.raw_documents",
+    embedding_column="content",
+    primary_key="id"
+)
+
+# Search
+results = vector_search.search(
+    index_name="main.docs.knowledge_base",
+    query="How do I deploy to Databricks Apps?",
+    num_results=5
+)
+
+for result in results:
+    print(result["content"])
+```
+
+### Use with LangGraph
+
+```python
+from databricks_agent_toolkit.integrations import DatabricksLLM
 from langgraph.graph import StateGraph, END
 from typing import TypedDict
-import dspy
 
-# Configure LLM
-lm = dspy.Databricks(model="databricks-dbrx-instruct")
-dspy.settings.configure(lm=lm)
+# Initialize LLM
+llm = DatabricksLLM(endpoint="databricks-claude-sonnet-4-5")
 
 # Define state
 class State(TypedDict):
-    input: str
-    analysis: str
-    result: dict
+    messages: list
+    result: str
 
-# Define agent function
-def analyze(state: State) -> State:
-    # Use DSPy for reasoning
-    class Analyze(dspy.Signature):
-        input = dspy.InputField()
-        analysis = dspy.OutputField()
-    
-    analyzer = dspy.ChainOfThought(Analyze)
-    result = analyzer(input=state["input"])
-    
-    return {"analysis": result.analysis}
+# Define agent node
+async def chat_node(state: State) -> State:
+    response = await llm.chat(state["messages"])
+    return {
+        "messages": state["messages"] + [{"role": "assistant", "content": response["content"]}],
+        "result": response["content"]
+    }
 
 # Build workflow
 workflow = StateGraph(State)
-workflow.add_node("analyze", analyze)
-workflow.set_entry_point("analyze")
-workflow.add_edge("analyze", END)
+workflow.add_node("chat", chat_node)
+workflow.set_entry_point("chat")
+workflow.add_edge("chat", END)
 
-# Compile
 app = workflow.compile()
 
 # Run
-result = app.invoke({"input": "Analyze this..."})
-print(result["analysis"])
-```
-
-### 2. Add Memory (Lakebase)
-
-```python
-from memory import LakebaseClient
-
-# Initialize
-memory = LakebaseClient()
-
-# Create index (one-time)
-memory.create_index(
-    name="main.agents.knowledge",
-    source_table="main.agents.documents",
-    embedding_column="content"
-)
-
-# Search for context
-def analyze_with_context(state: State) -> State:
-    # Get relevant context
-    context = memory.search(
-        index_name="main.agents.knowledge",
-        query=state["input"],
-        num_results=5
-    )
-    
-    # Use context in prompt
-    analyzer = dspy.ChainOfThought(AnalyzeWithContext)
-    result = analyzer(
-        input=state["input"],
-        context=[c["content"] for c in context]
-    )
-    
-    return {"analysis": result.analysis}
-```
-
-### 3. Add Evaluation
-
-```python
-from mlflow.genai import evaluate
-from mlflow.genai.scorers import Correctness, Safety
-from evaluation.custom_scorers import latency_check
-
-# Prepare eval data
-eval_data = [
-    {
-        "inputs": {"input": "Test query"},
-        "outputs": {"response": "Test response"},
-        "expectations": {"expected_response": "Expected"}
-    }
-]
-
-# Evaluate
-result = evaluate(
-    data=eval_data,
-    scorers=[Correctness(), Safety(), latency_check]
-)
-
-print(f"View results: {result.mlflow_ui_url}")
-```
-
-### 4. Add Self-Improvement
-
-Configure in `config/agent_config.yaml`:
-
-```yaml
-self_improvement_service:
-  enabled: true
-  check_interval_seconds: 300
-  
-  agents:
-    my_agent:
-      enabled: true
-      thresholds:
-        accuracy: 0.90
-        error_rate: 0.03
-      optimization:
-        config_path: "config/optimization/my_agent.yaml"
-```
-
-### 5. Deploy to Databricks
-
-```bash
-# Generate deployment config
-agent-deploy generate --app my-agent --output deployment/
-
-# Deploy
-databricks apps deploy -f deployment/databricks-app.yml
+result = await app.ainvoke({
+    "messages": [{"role": "user", "content": "Hello!"}]
+})
+print(result["result"])
 ```
 
 ---
 
-## Key Concepts
+## Deploy to Databricks Apps
 
-### We Integrate, Don't Reinvent
+### From Generated Scaffold
 
-This framework provides:
-- ✅ CLI tools for common tasks
-- ✅ Configuration management
-- ✅ Thin wrappers around native APIs
-- ✅ Examples and templates
+```bash
+cd my-chatbot
 
-This framework uses (not reimplements):
-- **LangGraph** - Orchestration
-- **DSPy** - Reasoning
-- **MLflow 3** - Evaluation & tracking
-- **Lakebase** - Vector search
-- **Databricks SDK** - UC, Model Serving
-- **MCP** - Model Context Protocol
+# Set credentials
+export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
+export DATABRICKS_CLIENT_ID="your-sp-client-id"
+export DATABRICKS_CLIENT_SECRET="your-sp-client-secret"
 
-### Configuration
-
-All settings in `config/agent_config.yaml`:
-
-```yaml
-agents:
-  my_agent:
-    model: "databricks-dbrx-instruct"
-    temperature: 0.7
-    max_tokens: 1000
-
-evaluation:
-  default_scorers:
-    - Correctness
-    - Safety
-
-optimization:
-  dspy:
-    enabled: true
-    optimizer: "BootstrapFewShot"
-
-telemetry:
-  enabled: true
-  zerobus:
-    table: "main.agents.telemetry"
+# Deploy
+databricks apps deploy my-chatbot \
+    --source-code-path . \
+    --app-config-file databricks-app.yml
 ```
+
+### Custom Deployment
+
+See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed instructions.
+
+---
+
+## Authentication
+
+### Local Development
+
+The toolkit uses Databricks SDK for authentication. Set one of:
+
+**Option 1: Databricks CLI**
+```bash
+databricks configure
+```
+
+**Option 2: Environment Variables**
+```bash
+export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
+export DATABRICKS_TOKEN="your-token"
+```
+
+**Option 3: .databrickscfg**
+```ini
+[DEFAULT]
+host = https://your-workspace.cloud.databricks.com
+token = your-token
+```
+
+### Databricks Apps (Production)
+
+Set Service Principal credentials:
+```bash
+export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
+export DATABRICKS_CLIENT_ID="your-sp-client-id"
+export DATABRICKS_CLIENT_SECRET="your-sp-client-secret"
+```
+
+The toolkit automatically uses OAuth M2M authentication.
 
 ---
 
 ## Next Steps
 
-1. **Learn the Platform:** Read `docs/PLATFORM_INTEGRATION.md`
-2. **Add Evaluation:** Read `docs/EVALUATION_GUIDE.md`
-3. **Add Monitoring:** Read `docs/OBSERVABILITY_GUIDE.md`
-4. **Deploy:** Read `docs/PLATFORM_INTEGRATION.md#databricks-deployment`
-
----
-
-## Common Patterns
-
-### RAG Agent
-
-```python
-from langgraph.graph import StateGraph
-from memory import LakebaseClient
-
-memory = LakebaseClient()
-
-def retrieve(state):
-    context = memory.search(
-        index_name="main.agents.docs",
-        query=state["input"],
-        num_results=5
-    )
-    return {"context": context}
-
-def generate(state):
-    # Use context to generate response
-    return {"response": generated_response}
-
-workflow = StateGraph(State)
-workflow.add_node("retrieve", retrieve)
-workflow.add_node("generate", generate)
-workflow.add_edge("retrieve", "generate")
-workflow.set_entry_point("retrieve")
-```
-
-### Multi-Agent System
-
-```python
-def router(state):
-    if state["type"] == "technical":
-        return "tech_expert"
-    return "general_agent"
-
-workflow = StateGraph(State)
-workflow.add_node("tech_expert", tech_agent)
-workflow.add_node("general_agent", general_agent)
-workflow.add_conditional_edges("START", router)
-```
-
-### Self-Improving Agent
-
-```python
-from mcp import McpClient
-
-async with McpClient() as client:
-    # Check performance
-    perf = await client.call_databricks_tool(
-        "check_performance",
-        {"agent_id": "my_agent"}
-    )
-    
-    if perf["status"] == "degraded":
-        # Trigger optimization
-        await client.call_databricks_tool(
-            "trigger_optimization",
-            {"agent_id": "my_agent"}
-        )
-```
-
----
-
-## CLI Reference
-
-```bash
-# Main command
-agent                    # Show all commands
-
-# Setup & Generation
-agent-setup              # Interactive setup wizard
-agent-generate           # Generate agent from template
-agent-architect          # Get architecture recommendations
-agent-advisor            # Analyze existing agent
-
-# Learning
-agent-learn              # Interactive learning path
-
-# Evaluation & Optimization
-agent-benchmark          # Run MLflow 3 benchmarks
-agent-optimize           # Optimize prompts (DSPy/TextGrad)
-
-# Deployment & Operations
-agent-deploy             # Generate deployment configs
-agent-monitoring         # Setup monitoring service
-agent-telemetry          # Setup Zerobus telemetry
-```
+- **Explore Examples:** [config/examples/](../config/examples/)
+- **Read Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md)
+- **Deploy to Production:** [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+- **Check PyPI:** https://pypi.org/project/databricks-agent-toolkit/
 
 ---
 
 ## Getting Help
 
-- **Full Documentation:** `docs/` folder
-- **Platform Integration:** `docs/PLATFORM_INTEGRATION.md`
-- **Evaluation:** `docs/EVALUATION_GUIDE.md`
-- **Monitoring:** `docs/OBSERVABILITY_GUIDE.md`
-- **Migration from v0.4:** `MIGRATION_GUIDE_V0.5.md`
-- **GitHub:** https://github.com/somasekar278/universal-agent-template
-
----
-
-**Start simple, scale to autonomous systems. Build ON TOP OF native platforms, not INSTEAD OF them.**
-
+- **GitHub:** https://github.com/databricks/databricks-agent-toolkit
+- **Issues:** https://github.com/databricks/databricks-agent-toolkit/issues
+- **PyPI:** https://pypi.org/project/databricks-agent-toolkit/
