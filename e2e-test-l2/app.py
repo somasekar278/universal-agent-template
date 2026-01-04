@@ -1,5 +1,5 @@
 """
-{{ name }} - Context-Aware Assistant Web App (L2)
+e2e-test-l2 - Context-Aware Assistant Web App (L2)
 
 Flask web app with conversation memory powered by Lakebase.
 
@@ -78,7 +78,7 @@ if rag_enabled:
 
 # Set MLflow experiment
 if config.get("mlflow", {}).get("auto_trace"):
-    mlflow.set_experiment(config["mlflow"].get("experiment", "/Shared/{{ name }}"))
+    mlflow.set_experiment(config["mlflow"].get("experiment", "/Shared/e2e-test-l2"))
 
 
 # ============================================================================
@@ -89,7 +89,7 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>{{ name }} - Assistant</title>
+    <title>e2e-test-l2 - Assistant</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -238,7 +238,7 @@ HTML_TEMPLATE = """
 <body>
     <div class="container">
         <div class="header">
-            <h1>{{ name }}</h1>
+            <h1>e2e-test-l2</h1>
             <p>Context-Aware Assistant with Memory</p>
             <div class="session-info" id="session-info">
                 Session: <span id="session-id">Loading...</span>
@@ -412,6 +412,8 @@ async def chat():
         with mlflow.start_span(name="get_history") as span:
             history = memory.get_messages_for_llm(session_id)
             span.set_attribute("history_length", len(history))
+            print(f"DEBUG: Session {session_id[:8]}... has {len(history)} messages in history")
+            print(f"DEBUG: History content: {history}")
         
         # Retrieve relevant documents (RAG)
         context = ""
@@ -448,6 +450,7 @@ Context:
             "content": system_prompt
         })
         messages.extend(history)
+        print(f"DEBUG: Sending {len(messages)} messages to LLM (1 system + {len(history)} history)")
         
         # Get LLM response
         with mlflow.start_span(name="llm_call") as span:
@@ -530,7 +533,7 @@ if __name__ == "__main__":
     print(f"""
     ╔═══════════════════════════════════════════════════════════╗
     ║                                                           ║
-    ║   {{ name }} - Context-Aware Assistant (L2)              ║
+    ║   e2e-test-l2 - Context-Aware Assistant (L2)              ║
     ║                                                           ║
     ║   🚀 Running on http://localhost:{port}                  ║
     ║   💾 Memory: Lakebase (PostgreSQL)                        ║

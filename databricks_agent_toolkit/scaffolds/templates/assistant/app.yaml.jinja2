@@ -1,2 +1,17 @@
 command: ['python', 'app.py']
+env:
+  - name: DATABRICKS_HOST
+    value: "{{ '${var.databricks_host}' }}"
+  - name: LAKEBASE_HOST
+    value: "{{ '${var.lakebase_host}' }}"
+  - name: LAKEBASE_DATABASE
+    value: "{{ '${var.lakebase_database}' }}"
+  - name: LAKEBASE_USER
+    value: "{{ '${var.lakebase_user}' }}"
+  - name: LAKEBASE_PASSWORD
+    value: "{{ '${var.lakebase_password}' }}"
+  - name: PGSSLMODE
+    value: "require"
+  - name: PGCHANNELBINDING
+    value: "disable"
 

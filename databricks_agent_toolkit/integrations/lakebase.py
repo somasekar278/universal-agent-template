@@ -14,6 +14,9 @@ Documentation: https://docs.databricks.com/lakebase/
 
 from typing import List, Dict, Any, Optional
 import os
+import time
+import requests
+from requests.auth import HTTPBasicAuth
 
 try:
     import psycopg2
@@ -128,23 +131,89 @@ class Lakebase:
         self.sslmode = sslmode or os.getenv("PGSSLMODE", "prefer")
         self.channel_binding = channel_binding or os.getenv("PGCHANNELBINDING", "prefer")
         
-        if not all([self.host, self.database, self.user, self.password]):
+        # OAuth M2M for Service Principal (Databricks Apps)
+        self.oauth_client_id = os.getenv('DATABRICKS_CLIENT_ID')
+        self.oauth_client_secret = os.getenv('DATABRICKS_CLIENT_SECRET')
+        self.databricks_host = os.getenv('DATABRICKS_HOST', '')
+        self._cached_token = None
+        self._token_expiry = 0
+        
+        # Determine authentication method
+        # For Provisioned Lakebase: Use OAuth Client ID as username + token as password
+        # For traditional: Use explicit username/password
+        if self.user and self.password:
+            # Explicit username/password provided
+            if not all([self.host, self.database]):
+                raise ValueError(
+                    "Missing Lakebase credentials. Provide via arguments or environment variables:\n"
+                    "LAKEBASE_HOST/PGHOST, LAKEBASE_DATABASE/PGDATABASE, LAKEBASE_USER/PGUSER, LAKEBASE_PASSWORD/PGPASSWORD"
+                )
+            self.auth_method = "Username/Password"
+            print("🔐 Using Username/Password authentication for Lakebase")
+        elif self.oauth_client_id and self.oauth_client_secret:
+            # OAuth M2M: Use client_id as username, token as password
+            if not all([self.host, self.database]):
+                raise ValueError(
+                    "Missing Lakebase connection info. Provide via arguments or environment variables:\n"
+                    "LAKEBASE_HOST/PGHOST, LAKEBASE_DATABASE/PGDATABASE"
+                )
+            self.auth_method = "OAuth M2M"
+            print("🔐 Using OAuth M2M authentication for Lakebase (client_id as username, token as password)")
+        else:
             raise ValueError(
-                "Missing Lakebase credentials. Provide via arguments or environment variables:\n"
-                "LAKEBASE_HOST/PGHOST, LAKEBASE_DATABASE/PGDATABASE, LAKEBASE_USER/PGUSER, LAKEBASE_PASSWORD/PGPASSWORD"
+                "Missing authentication. Provide either:\n"
+                "1. OAuth M2M: DATABRICKS_CLIENT_ID + DATABRICKS_CLIENT_SECRET (for Databricks Apps)\n"
+                "2. Username/Password: LAKEBASE_USER/PGUSER + LAKEBASE_PASSWORD/PGPASSWORD"
             )
         
         self.connection = None
     
+    def _get_oauth_token(self) -> str:
+        """Get OAuth token for Service Principal authentication."""
+        # Check if we have a valid cached token
+        if self._cached_token and time.time() < self._token_expiry:
+            return self._cached_token
+        
+        # Get new token
+        token_url = f"{self.databricks_host}/oidc/v1/token"
+        response = requests.post(
+            token_url,
+            auth=HTTPBasicAuth(self.oauth_client_id, self.oauth_client_secret),
+            data={"grant_type": "client_credentials", "scope": "all-apis"},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30
+        )
+        response.raise_for_status()
+        
+        token_data = response.json()
+        self._cached_token = token_data["access_token"]
+        # Set expiry with 5 min buffer
+        self._token_expiry = time.time() + token_data.get("expires_in", 3600) - 300
+        
+        return self._cached_token
+    
     def connect(self):
         """Establish connection to Lakebase."""
         if self.connection is None or self.connection.closed:
+            # Get credentials based on auth method
+            if self.auth_method == "OAuth M2M":
+                # Use OAuth token as password
+                token = self._get_oauth_token()
+                # For Lakebase with OAuth, use the Service Principal client ID as username
+                # and the OAuth access token as password
+                conn_user = self.oauth_client_id
+                conn_password = token
+            else:
+                # Use provided username/password
+                conn_user = self.user
+                conn_password = self.password
+            
             # Build connection parameters
             conn_params = {
                 "host": self.host,
                 "database": self.database,
-                "user": self.user,
-                "password": self.password,
+                "user": conn_user,
+                "password": conn_password,
                 "port": self.port,
                 "sslmode": self.sslmode,
             }
@@ -160,7 +229,7 @@ class Lakebase:
                     pass
             
             self.connection = psycopg2.connect(**conn_params)
-            print(f"✅ Connected to Lakebase: {self.host}/{self.database}")
+            print(f"✅ Connected to Lakebase: {self.host}/{self.database} ({self.auth_method})")
     
     def close(self):
         """Close connection to Lakebase."""
@@ -180,10 +249,14 @@ class Lakebase:
             Number of rows affected
         """
         self.connect()
-        with self.connection.cursor() as cursor:
-            cursor.execute(query, params)
-            self.connection.commit()
-            return cursor.rowcount
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, params)
+                self.connection.commit()
+                return cursor.rowcount
+        except Exception as e:
+            self.connection.rollback()
+            raise
     
     def query(
         self,
@@ -203,12 +276,16 @@ class Lakebase:
             List of result dictionaries (or single dict if fetch_one=True)
         """
         self.connect()
-        with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
-            cursor.execute(query, params)
-            if fetch_one:
-                result = cursor.fetchone()
-                return dict(result) if result else None
-            return [dict(row) for row in cursor.fetchall()]
+        try:
+            with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(query, params)
+                if fetch_one:
+                    result = cursor.fetchone()
+                    return dict(result) if result else None
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            self.connection.rollback()
+            raise
     
     def create_conversations_table(self):
         """
@@ -221,26 +298,52 @@ class Lakebase:
         - timestamp: When message was sent
         - metadata: Additional data (JSONB)
         """
-        self.execute("""
-            CREATE TABLE IF NOT EXISTS conversations (
-                id SERIAL PRIMARY KEY,
-                session_id VARCHAR(255) NOT NULL,
-                role VARCHAR(50) NOT NULL,
-                content TEXT NOT NULL,
-                timestamp TIMESTAMP DEFAULT NOW(),
-                metadata JSONB
-            )
-        """)
-        
-        # Create indexes separately (PostgreSQL syntax)
+        # Check if table already exists
         try:
-            self.execute("CREATE INDEX IF NOT EXISTS idx_session ON conversations(session_id)")
-            self.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON conversations(timestamp)")
-        except Exception:
-            # Indexes might already exist, that's okay
-            pass
+            result = self.query("""
+                SELECT EXISTS (
+                    SELECT FROM pg_tables 
+                    WHERE schemaname = 'public' 
+                    AND tablename = 'conversations'
+                )
+            """, fetch_one=True)
+            
+            if result and result.get('exists'):
+                print("✅ Conversations table already exists")
+                return
+        except Exception as e:
+            print(f"⚠️  Could not check if table exists: {e}")
         
-        print("✅ Created conversations table")
+        # Try to create table
+        try:
+            self.execute("""
+                CREATE TABLE IF NOT EXISTS conversations (
+                    id SERIAL PRIMARY KEY,
+                    session_id VARCHAR(255) NOT NULL,
+                    role VARCHAR(50) NOT NULL,
+                    content TEXT NOT NULL,
+                    timestamp TIMESTAMP DEFAULT NOW(),
+                    metadata JSONB
+                )
+            """)
+            print("✅ Created conversations table")
+        except Exception as e:
+            # Table might already exist or we lack CREATE permission
+            if "permission denied" in str(e).lower():
+                print("⚠️  No CREATE permission, assuming table exists")
+            else:
+                raise
+        
+        # Try to create indexes (optional, don't fail if we can't)
+        for index_name, index_sql in [
+            ("idx_session", "CREATE INDEX IF NOT EXISTS idx_session ON conversations(session_id)"),
+            ("idx_timestamp", "CREATE INDEX IF NOT EXISTS idx_timestamp ON conversations(timestamp)")
+        ]:
+            try:
+                self.execute(index_sql)
+            except Exception:
+                # Indexes are optional optimization
+                pass
     
     def store_message(
         self,

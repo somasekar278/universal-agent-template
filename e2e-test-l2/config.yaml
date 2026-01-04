@@ -1,16 +1,16 @@
-# {{ name }} Configuration (L2 - Assistant)
+# e2e-test-l2 Configuration (L2 - Assistant)
 #
 # Context-aware assistant with conversation memory.
 
 type: assistant
-name: {{ name }}
+name: e2e-test-l2
 
 # Model Configuration
 model:
-  endpoint: {{ model | default("databricks-claude-sonnet-4-5") }}
+  endpoint: databricks-gpt-5-2
   streaming: false  # Set to true for token-by-token streaming
-  temperature: 0.7  # Controls randomness (0.0-1.0)
-  max_tokens: 500  # Maximum tokens in response
+  temperature: 0.7
+  max_tokens: 500
   system_prompt: "You are a helpful AI assistant."
 
 # Memory Configuration (Lakebase - PostgreSQL)
@@ -26,15 +26,15 @@ memory:
 
 # RAG Configuration (Optional - for knowledge retrieval)
 rag:
-  enabled: {{ enable_rag | default(false) | lower }}  # Set to true to enable RAG
+  enabled: false  # Set to true to enable RAG
   
   # Document source (UC Volume path or local path for testing)
   # UC Volume example: /Volumes/main/default/agent_docs
   # Local path example: /path/to/docs
-  source: {{ rag_source | default('null') if rag_source else 'null' }}
+  source: null
   
   # Backend: pgvector (default, cost-effective) or vector_search (enterprise-scale)
-  backend: {{ rag_backend | default('pgvector') }}
+  backend: pgvector
   
   # Retrieval settings
   top_k: 5  # Number of documents to retrieve
@@ -45,16 +45,16 @@ rag:
   
   # pgvector index type (only for pgvector backend)
   # Options: ivfflat (faster indexing, good for updates) or hnsw (better recall, read-heavy)
-  index_type: {{ index_type | default('ivfflat') }}  # Default: ivfflat
+  index_type: ivfflat  # Default: ivfflat
   
   # Vector Search config (only if backend: vector_search)
-  vector_search_endpoint: {{ vector_search_endpoint | default('one-env-shared-endpoint-0') }}  # Your Vector Search endpoint name
-  index_name: {{ vector_search_index | default('null') if vector_search_index else 'null' }}  # e.g., main.default.docs_index (catalog.schema.index_name)
+  vector_search_endpoint: None  # Your Vector Search endpoint name
+  index_name: null  # e.g., main.default.docs_index (catalog.schema.index_name)
 
 # MLflow Configuration
 mlflow:
   auto_trace: true
-  experiment: /Shared/{{ name }}
+  experiment: /Shared/e2e-test-l2
   show_url: false  # Set to true to see MLflow trace URLs (developer mode)
   
   # Human feedback collection
@@ -64,7 +64,7 @@ mlflow:
 
 # Databricks Apps Deployment
 deployment:
-  name: {{ name }}
+  name: e2e-test-l2
   port: 8000
   resources:
     cpu: 2

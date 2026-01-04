@@ -1,4 +1,4 @@
-# {{ name }} - Context-Aware Assistant (L2)
+# e2e-test-l2 - Context-Aware Assistant (L2)
 
 An intelligent assistant that **remembers conversations** using Lakebase (Databricks PostgreSQL).
 
@@ -21,11 +21,9 @@ An intelligent assistant that **remembers conversations** using Lakebase (Databr
 Create a Lakebase instance in Databricks:
 1. Go to **Compute** → **Lakebase**
 2. Click **Create Instance**
-3. **Choose Autoscale** (recommended - simpler permissions management)
-4. Note your connection details:
-   - Host: `ep-xxx.database.[region].cloud.databricks.com` (Autoscale)
+3. Note your connection details:
+   - Host: `your-instance.lakebase.databricks.com`
    - Database: `agents`
-   - Username and password
    - User: `your-user`
    - Password: `your-password`
 
@@ -246,7 +244,7 @@ Create a Databricks Workflow to sync nightly:
 ```python
 # rag_sync_job.py
 from databricks_agent_toolkit.integrations import Lakebase
-from {{ name }}.rag_manager import RAGManager
+from e2e-test-l2.rag_manager import RAGManager
 import yaml
 
 # Load config
@@ -271,7 +269,7 @@ print("✅ RAG index refreshed")
 resources:
   jobs:
     rag_sync_job:
-      name: "{{ name }} - RAG Sync"
+      name: "e2e-test-l2 - RAG Sync"
       schedule:
         quartz_cron_expression: "0 0 2 * * ?"  # Daily at 2 AM
         timezone_id: "America/Los_Angeles"
@@ -374,13 +372,13 @@ databricks bundle deploy
 ```
 
 **3. Add permissions** (in Databricks UI):
-1. Go to **Apps** → **{{ name }}**
+1. Go to **Apps** → **e2e-test-l2**
 2. **Resources** → **Add Resource**
 3. Add **Model Serving** with **Can query** permission
 
 **4. Access your app**
 ```
-https://your-workspace.cloud.databricks.com/ml/apps/{{ name }}
+https://your-workspace.cloud.databricks.com/ml/apps/e2e-test-l2
 ```
 
 ---
@@ -393,7 +391,7 @@ export DATABRICKS_CLIENT_ID="your-sp-client-id"
 export DATABRICKS_CLIENT_SECRET="your-sp-client-secret"
 
 # Deploy
-databricks apps deploy {{ name }} \
+databricks apps deploy e2e-test-l2 \
     --source-code-path . \
     --app-config-file databricks-app.yml
 ```

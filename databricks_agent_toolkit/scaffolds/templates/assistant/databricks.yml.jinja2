@@ -16,12 +16,6 @@ resources:
       description: "{{ name }} - Context-Aware Assistant (L2)"
       source_code_path: .
       compute_size: LARGE
-      resources:
-        - name: model_serving
-          description: "Access to Model Serving endpoints"
-          serving_endpoint:
-            name: "*"
-            permission: CAN_QUERY
 
 targets:
   dev:
@@ -39,9 +33,13 @@ targets:
         level: CAN_MANAGE
 
 variables:
+  databricks_host:
+    description: "Databricks workspace URL"
+    default: ""  # e.g., "https://your-workspace.cloud.databricks.com"
+  
   lakebase_host:
-    description: "Lakebase PostgreSQL host"
-    default: ""
+    description: "Lakebase PostgreSQL host (Autoscale recommended)"
+    default: ""  # e.g., "ep-xxx.database.us-west-2.cloud.databricks.com"
   
   lakebase_database:
     description: "Lakebase database name"
@@ -49,9 +47,9 @@ variables:
   
   lakebase_user:
     description: "Lakebase username"
-    default: ""
+    default: ""  # Your Lakebase user
   
   lakebase_password:
     description: "Lakebase password"
-    default: ""
+    default: ""  # Your Lakebase password
 
