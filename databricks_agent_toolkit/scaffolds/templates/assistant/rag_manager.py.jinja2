@@ -170,11 +170,14 @@ class RAGManager:
     
     def _setup_vector_search(self):
         """
-        Setup Databricks Vector Search:
+        Setup Databricks Vector Search (TRIGGERED mode for cost-effectiveness):
         1. Validate/create endpoint
         2. Create Delta table for documents
-        3. Create Vector Search index
-        4. Sync documents from UC Volume
+        3. Create Vector Search index (TRIGGERED sync mode)
+        4. Index documents from UC Volume and trigger sync
+        
+        Note: Uses TRIGGERED mode to avoid continuous cluster costs.
+        Sync is triggered automatically after indexing new documents.
         """
         if not SDK_AVAILABLE:
             raise ValueError("databricks-sdk required for vector_search backend")
@@ -301,7 +304,7 @@ class RAGManager:
                 index_type=VectorIndexType.DELTA_SYNC,
                 delta_sync_index_spec=DeltaSyncVectorIndexSpecRequest(
                     source_table=self.delta_table,
-                    pipeline_type=PipelineType.TRIGGERED,  # TRIGGERED for manual sync, CONTINUOUS for auto-sync
+                    pipeline_type=PipelineType.TRIGGERED,  # TRIGGERED: Cost-effective, sync on-demand
                     embedding_source_columns=[
                         EmbeddingSourceColumn(
                             name="content",
@@ -354,6 +357,10 @@ class RAGManager:
                     print(f"   ⚠️  Failed to index {file_path}: {e}")
             
             print(f"   ✅ Indexed {indexed_count}/{len(new_files)} documents")
+            
+            # For Vector Search, trigger sync after adding documents (TRIGGERED mode)
+            if self.backend == "vector_search" and indexed_count > 0:
+                self._sync_vector_search_index()
         
         except Exception as e:
             print(f"   ⚠️  Auto-indexing failed: {e}")
@@ -730,8 +737,41 @@ class RAGManager:
             return []
     
     def refresh(self):
-        """Manually refresh index (check for new documents)"""
+        """
+        Manually refresh index (check for new documents).
+        
+        This can be called:
+        - From CLI: User types 'refresh'
+        - From API: POST /api/rag/refresh endpoint
+        - From Databricks Workflow: Scheduled nightly job
+        """
         if self.source:
             print("\n🔄 Refreshing document index...")
             self._auto_index_documents()
+            
+            # For Vector Search with TRIGGERED mode, manually sync the index
+            if self.backend == "vector_search":
+                self._sync_vector_search_index()
+    
+    def _sync_vector_search_index(self):
+        """
+        Manually trigger Vector Search index sync (TRIGGERED mode).
+        
+        This syncs the Vector Search index with the Delta table, generating
+        embeddings for any new documents that were added.
+        """
+        if self.backend != "vector_search":
+            return
+        
+        try:
+            from databricks.sdk import WorkspaceClient
+            
+            w = self.workspace_client or WorkspaceClient()
+            
+            print(f"   🔄 Syncing Vector Search index...")
+            w.vector_search_indexes.sync_index(self.vs_index)
+            print(f"   ✓ Vector Search sync triggered")
+            
+        except Exception as e:
+            print(f"   ⚠️  Vector Search sync failed: {e}")
 

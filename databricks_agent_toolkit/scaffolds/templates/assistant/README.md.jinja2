@@ -190,10 +190,10 @@ rag:
 
 **What happens on first run:**
 1. ✅ Creates Delta table: `main.default.docs_index_source`
-2. ✅ Creates Vector Search index on the Delta table
+2. ✅ Creates Vector Search index on the Delta table (TRIGGERED mode)
 3. ✅ Indexes documents from UC Volume to Delta table
 4. ✅ Vector Search auto-generates embeddings
-5. ✅ Index syncs automatically via Change Data Feed
+5. ✅ Sync is triggered automatically after indexing (cost-effective)
 
 **Prerequisites:**
 - SQL Warehouse (for Delta table operations)
@@ -226,23 +226,67 @@ User: "How do I deploy to production?"
 5. LLM answers using your docs ✨
 ```
 
-### Incremental Indexing
+### Keeping Documents Current
 
-RAG automatically detects new documents:
-
+**Option 1: Manual Refresh (Simple)**
 ```bash
-# Add new docs to UC Volume
-/Volumes/main/docs/source/new_guide.md
+# CLI: Type 'refresh' during conversation
+> refresh
 
-# Restart app or type 'refresh' in CLI
+# Or restart the app
 python app.py
-
-# 📄 Checking documents...
-# 🔄 Indexing 1 new document...
-# ✅ Indexed 1 document
 ```
 
-**Auto-refresh:** RAG checks for new docs on every app startup.
+**Option 2: Scheduled Workflow (Recommended for Production)**
+
+Create a Databricks Workflow to sync nightly:
+
+```python
+# rag_sync_job.py
+from databricks_agent_toolkit.integrations import Lakebase
+from {{ name }}.rag_manager import RAGManager
+import yaml
+
+# Load config
+with open("config.yaml") as f:
+    config = yaml.safe_load(f)
+
+# Initialize RAG manager
+if config["rag"]["backend"] == "pgvector":
+    lakebase = Lakebase()
+    rag = RAGManager(config["rag"], lakebase_client=lakebase)
+else:
+    rag = RAGManager(config["rag"])
+
+# Refresh index
+rag.refresh()
+print("✅ RAG index refreshed")
+```
+
+**Workflow Configuration:**
+```yaml
+# In Databricks Workflows UI or bundle.yml
+resources:
+  jobs:
+    rag_sync_job:
+      name: "{{ name }} - RAG Sync"
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"  # Daily at 2 AM
+        timezone_id: "America/Los_Angeles"
+      tasks:
+        - task_key: sync_rag
+          python_file: rag_sync_job.py
+          libraries:
+            - pypi:
+                package: databricks-agent-toolkit>=0.1.3
+```
+
+**Why Workflows?**
+- ✅ Runs independently of the app
+- ✅ No impact on app performance
+- ✅ Scheduled (nightly, hourly, etc.)
+- ✅ Monitored via Databricks Jobs UI
+- ✅ Scalable (dedicated cluster)
 
 ---
 
