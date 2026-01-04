@@ -43,15 +43,60 @@ print(response["content"])
 ```bash
 pip install databricks-agent-toolkit
 
-# Generate chatbot (L1)
+# Generate chatbot (L1) - Simple conversational AI
 databricks-agent-toolkit generate chatbot my-bot
 
-# Generate assistant with memory (L2)
+# Generate assistant (L2) - With memory + RAG
 databricks-agent-toolkit generate assistant my-assistant
 
-cd my-bot
+cd my-assistant
 pip install -r requirements.txt
+
+# Configure RAG in config.yaml (optional)
+# rag:
+#   enabled: true
+#   source: /Volumes/main/default/docs
+#   backend: pgvector  # or vector_search
+
 python app.py  # Web UI on http://localhost:8000
+
+# Deploy to Databricks Apps
+databricks apps deploy my-assistant
+```
+
+---
+
+## ✨ New in 0.1.3: RAG-Powered Assistants
+
+The L2 Assistant scaffold now includes **production-ready RAG** with two backends:
+
+### **pgvector** (Default, Cost-Effective)
+- 🚀 Instant setup (< 1 second)
+- 💰 Included in Lakebase, no extra cost
+- 📊 IVFFlat (fast) or HNSW (accurate) indexing
+- 📁 Auto-indexes from UC Volumes
+- ✅ Perfect for small-medium knowledge bases (100s-10,000s docs)
+
+### **Databricks Vector Search** (Enterprise-Scale)
+- 🌐 Millions of documents
+- 🔄 Auto-sync via Delta Change Data Feed
+- 🤖 Managed embeddings (Databricks FMAPI)
+- 🏢 Enterprise features (versioning, lineage, governance)
+- ✅ Perfect for large-scale production RAG
+
+**Both backends:**
+- Auto-index documents from UC Volumes on startup
+- Generate embeddings using Databricks Foundation Models
+- Support incremental updates
+- Configurable via `config.yaml`
+
+```yaml
+# Simple pgvector setup
+rag:
+  enabled: true
+  source: /Volumes/main/default/docs
+  backend: pgvector
+  index_type: ivfflat  # or hnsw for better accuracy
 ```
 
 ---
@@ -87,10 +132,12 @@ from databricks_agent_toolkit.integrations import (
 )
 ```
 
-- **Model Serving** - Easy LLM client with OAuth M2M auth
+- **Model Serving** - Easy LLM client with OAuth M2M auth, MLflow auto-tracing
 - **Unity Catalog** - Manage prompts, configs, functions
-- **Lakebase** - Managed PostgreSQL for conversational memory & structured data
-- **DatabricksVectorSearch** - Delta Lake-based vector search for large-scale RAG
+- **Lakebase** - Managed PostgreSQL for conversational memory + pgvector for RAG
+- **DatabricksVectorSearch** - Delta Lake-based vector search for enterprise RAG
+- **RAG Manager** - Auto-indexing from UC Volumes, dual-backend support (NEW in 0.1.3)
+- **Scaffold Validator** - Auto-validates generated scaffolds (NEW in 0.1.3)
 - **Managed MCP Servers** - Vector Search, Genie, UC Functions, DBSQL
 - **Databricks Apps** - One-command deployment
 - **Workflows** - Schedule optimization jobs
@@ -120,18 +167,19 @@ Located in `telemetry/`:
 ### **CLI Tools**
 
 ```bash
-databricks-agent-toolkit auth check        # Check authentication
-databricks-agent-toolkit generate chatbot  # Generate chatbot (L1)
+databricks-agent-toolkit generate chatbot my-bot      # L1: Simple chatbot
+databricks-agent-toolkit generate assistant my-agent  # L2: With memory + RAG
 ```
 
-**Scaffold Types (v0.1.0):**
-- **chatbot (L1):** Simple chatbot with web UI - ✅ Available now
+**Scaffold Types (v0.1.3):**
 
-**Coming in Future Releases:**
-- **assistant (L2):** Context-aware with memory
-- **api (L3):** FastAPI production endpoint
-- **workflow (L4):** LangGraph workflows
-- **system (L5):** Multi-agent with A2A
+| Scaffold | Status | Features |
+|----------|--------|----------|
+| **chatbot** (L1) | ✅ Available | Simple conversational AI, MLflow tracing |
+| **assistant** (L2) | ✅ Available | Memory (Lakebase), RAG (pgvector/Vector Search), UC Volumes |
+| **api** (L3) | 🔜 Coming soon | FastAPI production endpoint |
+| **workflow** (L4) | 🔜 Coming soon | LangGraph workflows |
+| **system** (L5) | 🔜 Coming soon | Multi-agent with A2A |
 
 ---
 
@@ -206,11 +254,11 @@ app = workflow.compile()
 
 | Level | Complexity | Time | What You Build | Status |
 |-------|-----------|------|----------------|--------|
-| **L1** | Simple | 2-4h | Simple chatbot (learn basics) | ✅ v0.1.0 |
-| **L2** | Basic+ | 4-8h | Context-aware assistant (add memory) | Coming soon |
-| **L3** | Intermediate | 8-16h | Production API (FastAPI + toolkit) | Coming soon |
-| **L4** | Advanced | 16-32h | Complex workflow (LangGraph + optimization) | Coming soon |
-| **L5** | Expert | 32-64h | Multi-agent system (LangGraph + A2A) | Coming soon |
+| **L1 (chatbot)** | Simple | 2-4h | Simple chatbot (learn basics) | ✅ v0.1.0 |
+| **L2 (assistant)** | Basic+ | 4-8h | Assistant with memory + RAG | ✅ v0.1.3 |
+| **L3 (api)** | Intermediate | 8-16h | Production API (FastAPI + toolkit) | 🔜 Coming soon |
+| **L4 (workflow)** | Advanced | 16-32h | Complex workflow (LangGraph + optimization) | 🔜 Coming soon |
+| **L5 (system)** | Expert | 32-64h | Multi-agent system (LangGraph + A2A) | 🔜 Coming soon |
 
 See `config/examples/` for configuration templates.
 
@@ -319,7 +367,7 @@ pip install databricks-agent-toolkit[all]
 
 ## 🤝 Contributing
 
-We welcome contributions! This toolkit is in active development (v0.1.0).
+We welcome contributions! This toolkit is in active development (v0.1.3).
 
 **Priority areas:**
 - Complete scaffold generation (L1-L5)
@@ -346,18 +394,22 @@ Apache 2.0
 
 ## 🎉 What's Next?
 
-**v0.1.0 (Current Release):**
+**v0.1.3 (Current Release):**
 - ✅ Core integrations (Model Serving, Unity Catalog, OAuth M2M auth)
-- ✅ L1 Chatbot scaffold (fully working, tested, deployed)
-- ✅ MLflow 3 evaluation system
-- ✅ Databricks Apps deployment
-- ✅ Comprehensive documentation
+- ✅ L1 Chatbot scaffold (simple conversational AI)
+- ✅ L2 Assistant scaffold (memory + RAG)
+- ✅ RAG with pgvector + Databricks Vector Search
+- ✅ UC Volume auto-indexing
+- ✅ IVFFlat/HNSW configurable indexing
+- ✅ Scaffold validation system
+- ✅ MLflow 3 tracing (@mlflow.trace)
+- ✅ Databricks Apps deployment (OAuth M2M)
 
 **v0.2.0 (Next Release):**
-- L2-L5 scaffold generation (assistant, api, workflow, system)
-- Delta Lake memory backend for L2+
-- MCP server integration examples
+- L3-L5 scaffold generation (api, workflow, system)
+- MCP server integration for L4/L5
 - DSPy/TextGrad optimization workflows
+- Advanced monitoring & observability
 - Video tutorials
 
 ---
