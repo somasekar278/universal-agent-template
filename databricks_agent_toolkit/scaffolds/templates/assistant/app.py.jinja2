@@ -24,6 +24,7 @@ except ImportError:
     sys.exit(1)
 
 from memory_manager import MemoryManager
+from rag_manager import RAGManager
 
 
 # ============================================================================
@@ -60,6 +61,20 @@ memory = MemoryManager(
     max_history=config["memory"].get("max_history", 20)
 )
 memory.initialize()
+
+# Initialize RAG (optional)
+rag_enabled = config.get("rag", {}).get("enabled", False)
+rag = None
+if rag_enabled:
+    try:
+        rag = RAGManager(
+            config=config.get("rag", {}),
+            lakebase_client=memory.lakebase,
+            workspace_client=None
+        )
+    except Exception as e:
+        print(f"⚠️  RAG initialization failed: {e}")
+        rag_enabled = False
 
 # Set MLflow experiment
 if config.get("mlflow", {}).get("auto_trace"):
@@ -377,8 +392,9 @@ def init_session():
 
 
 @app.route("/api/chat", methods=["POST"])
+@mlflow.trace(name="assistant_chat", span_type="CHAIN")
 async def chat():
-    """Handle chat messages"""
+    """Handle chat messages with MLflow tracing"""
     data = request.json
     session_id = data.get("session_id")
     message = data.get("message")
@@ -389,29 +405,68 @@ async def chat():
     try:
         # Store user message
         memory.store_message(session_id, "user", message)
+        mlflow.log_param("session_id", session_id)
+        mlflow.log_param("message_length", len(message))
         
         # Get conversation history
-        history = memory.get_messages_for_llm(session_id)
+        with mlflow.start_span(name="get_history") as span:
+            history = memory.get_messages_for_llm(session_id)
+            span.set_attribute("history_length", len(history))
+        
+        # Retrieve relevant documents (RAG)
+        context = ""
+        if rag_enabled and rag:
+            try:
+                with mlflow.start_span(name="rag_retrieve") as span:
+                    docs = rag.retrieve(message)
+                    span.set_attribute("docs_retrieved", len(docs))
+                    if docs:
+                        context = "\n\n".join([
+                            f"[Source: {doc['source']}]\n{doc['content']}"
+                            for doc in docs
+                        ])
+                        # Log RAG sources
+                        mlflow.log_text("\n".join([d['source'] for d in docs]), "rag_sources.txt")
+            except Exception as e:
+                print(f"⚠️  RAG retrieval failed: {e}")
+                mlflow.log_param("rag_error", str(e))
+        
+        # Build system prompt with context
+        system_prompt = config["model"].get("system_prompt", "You are a helpful assistant.")
+        if context:
+            system_prompt = f"""You are a helpful assistant. Use the following context to answer questions accurately.
+
+Context:
+{context}
+
+{system_prompt}"""
         
         # Prepare messages
         messages = []
-        if "system_prompt" in config["model"]:
-            messages.append({
-                "role": "system",
-                "content": config["model"]["system_prompt"]
-            })
+        messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
         messages.extend(history)
         
         # Get LLM response
-        response = await llm.chat(messages)
-        assistant_response = response["content"]
+        with mlflow.start_span(name="llm_call") as span:
+            response = await llm.chat(messages)
+            assistant_response = response["content"]
+            span.set_attribute("response_length", len(assistant_response))
+            span.set_attribute("model", config["model"]["endpoint"])
         
         # Store assistant response
         memory.store_message(session_id, "assistant", assistant_response)
         
+        # Log outputs
+        mlflow.log_text(message, "user_message.txt")
+        mlflow.log_text(assistant_response, "assistant_response.txt")
+        
         return jsonify({"response": assistant_response})
     
     except Exception as e:
+        mlflow.log_param("error", str(e))
         return jsonify({"error": str(e)}), 500
 
 
@@ -440,10 +495,26 @@ def session_info():
     return jsonify(info)
 
 
+@app.route("/api/rag/refresh", methods=["POST"])
+def refresh_rag():
+    """Refresh RAG index"""
+    if rag_enabled and rag:
+        try:
+            rag.refresh()
+            return jsonify({"status": "refreshed"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "RAG not enabled"}), 400
+
+
 @app.route("/health")
 def health():
     """Health check endpoint"""
-    return jsonify({"status": "healthy"})
+    return jsonify({
+        "status": "healthy",
+        "rag_enabled": rag_enabled
+    })
 
 
 # ============================================================================

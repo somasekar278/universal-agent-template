@@ -1,0 +1,737 @@
+"""
+RAG Manager for {{ name }}
+
+Handles document retrieval using:
+- pgvector in Lakebase (default, cost-effective)
+- Databricks Vector Search (optional, enterprise-scale)
+
+Features:
+- Auto-setup (tables, indexes, embeddings)
+- Incremental indexing (only new documents)
+- Auto-parsing from UC Volumes
+- Seamless backend switching
+"""
+
+import os
+import json
+import hashlib
+from typing import List, Dict, Any, Optional
+from pathlib import Path
+import requests
+import time
+
+try:
+    from databricks.sdk import WorkspaceClient
+    SDK_AVAILABLE = True
+except ImportError:
+    SDK_AVAILABLE = False
+
+try:
+    from databricks_agent_toolkit.integrations import Lakebase, DatabricksVectorSearch
+    INTEGRATIONS_AVAILABLE = True
+except ImportError:
+    INTEGRATIONS_AVAILABLE = False
+
+
+class RAGManager:
+    """
+    Auto-configuring RAG manager with smart defaults.
+    
+    Usage:
+        rag = RAGManager(config, lakebase_client)
+        
+        # Auto-setup happens on init
+        # Indexes documents from UC Volume automatically
+        
+        # Retrieve relevant docs
+        docs = rag.retrieve("How do I deploy to Databricks?")
+    """
+    
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        lakebase_client: Optional['Lakebase'] = None,
+        workspace_client: Optional['WorkspaceClient'] = None
+    ):
+        """
+        Initialize RAG manager with auto-setup.
+        
+        Args:
+            config: RAG configuration dict
+            lakebase_client: Lakebase client (for pgvector)
+            workspace_client: Workspace client (for Vector Search)
+        """
+        self.config = config
+        self.backend = config.get("backend", "pgvector")
+        self.source = config.get("source")
+        self.top_k = config.get("top_k", 5)
+        self.chunk_size = config.get("chunk_size", 500)
+        self.embedding_model = config.get("embedding_model", "databricks-bge-large-en")
+        self.index_type = config.get("index_type", "ivfflat")  # ivfflat or hnsw
+        
+        # Clients
+        self.lakebase = lakebase_client
+        self.workspace_client = workspace_client or (WorkspaceClient() if SDK_AVAILABLE else None)
+        
+        # Databricks config
+        self.databricks_host = os.getenv("DATABRICKS_HOST")
+        if self.databricks_host and not self.databricks_host.startswith("http"):
+            self.databricks_host = f"https://{self.databricks_host}"
+        
+        # State
+        self._initialized = False
+        
+        # Auto-setup
+        self._auto_setup()
+    
+    def _auto_setup(self):
+        """Auto-setup RAG backend and index documents"""
+        if self._initialized:
+            return
+        
+        print(f"\n🔧 Setting up RAG with {self.backend}...")
+        
+        try:
+            if self.backend == "pgvector":
+                self._setup_pgvector()
+            elif self.backend == "vector_search":
+                self._setup_vector_search()
+            else:
+                raise ValueError(f"Unknown backend: {self.backend}")
+            
+            # Auto-index documents if source provided
+            if self.source:
+                self._auto_index_documents()
+            
+            self._initialized = True
+            print(f"✅ RAG ready ({self.backend})!\n")
+        
+        except Exception as e:
+            print(f"⚠️  RAG setup failed: {e}")
+            print("   Assistant will work without RAG")
+    
+    def _setup_pgvector(self):
+        """
+        Setup pgvector in Lakebase:
+        1. Enable pgvector extension
+        2. Create embeddings table
+        3. Create index for fast similarity search
+        """
+        if not self.lakebase:
+            raise ValueError("Lakebase client required for pgvector backend")
+        
+        # Enable pgvector extension (idempotent)
+        try:
+            self.lakebase.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            print("   ✓ pgvector extension enabled")
+        except Exception as e:
+            print(f"   ⚠️  Could not enable pgvector: {e}")
+        
+        # Create embeddings table (idempotent)
+        self.lakebase.execute("""
+            CREATE TABLE IF NOT EXISTS embeddings (
+                id SERIAL PRIMARY KEY,
+                document_path TEXT NOT NULL,
+                chunk_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                embedding vector(1024),
+                metadata JSONB,
+                file_hash TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(document_path, chunk_id)
+            )
+        """)
+        print("   ✓ Embeddings table ready")
+        
+        # Create index for fast similarity search (idempotent)
+        try:
+            if self.index_type == "hnsw":
+                # HNSW: Better recall, higher memory, slower build (good for read-heavy)
+                self.lakebase.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_embedding_cosine 
+                    ON embeddings 
+                    USING hnsw (embedding vector_cosine_ops)
+                    WITH (m = 16, ef_construction = 64)
+                """)
+                print("   ✓ Vector index created (HNSW - optimized for accuracy)")
+            else:
+                # IVFFlat: Faster build, lower memory, good recall (good for updates)
+                self.lakebase.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_embedding_cosine 
+                    ON embeddings 
+                    USING ivfflat (embedding vector_cosine_ops)
+                    WITH (lists = 100)
+                """)
+                print("   ✓ Vector index created (IVFFlat - optimized for updates)")
+        except Exception as e:
+            # Index might fail if not enough data, that's okay
+            print(f"   ⚠️  Vector index creation skipped: {e}")
+            pass
+    
+    def _setup_vector_search(self):
+        """
+        Setup Databricks Vector Search:
+        1. Validate/create endpoint
+        2. Create Delta table for documents
+        3. Create Vector Search index
+        4. Sync documents from UC Volume
+        """
+        if not SDK_AVAILABLE:
+            raise ValueError("databricks-sdk required for vector_search backend")
+        
+        # Get Vector Search configuration
+        self.vs_endpoint = self.config.get("vector_search_endpoint", "one-env-shared-endpoint-0")
+        self.vs_index = self.config.get("index_name")
+        
+        if not self.vs_index:
+            raise ValueError("index_name required for vector_search backend (e.g., main.default.docs_index)")
+        
+        # Parse index name: catalog.schema.index
+        parts = self.vs_index.split(".")
+        if len(parts) != 3:
+            raise ValueError(f"Invalid index_name format. Expected 'catalog.schema.index', got '{self.vs_index}'")
+        
+        self.catalog, self.schema, self.index_name = parts
+        self.delta_table = f"{self.catalog}.{self.schema}.{self.index_name}_source"
+        
+        print(f"   ✓ Vector Search Endpoint: {self.vs_endpoint}")
+        print(f"   ✓ Index: {self.vs_index}")
+        print(f"   ✓ Delta Table: {self.delta_table}")
+        
+        try:
+            # Create Delta table for documents (source for Vector Search)
+            self._create_delta_table_for_docs()
+            
+            # Create or validate Vector Search index
+            self._create_vector_search_index()
+            
+            print(f"   ✓ Vector Search setup complete")
+        
+        except Exception as e:
+            print(f"   ⚠️  Vector Search setup error: {e}")
+            print(f"      Manual setup may be required. See README.md")
+            raise
+    
+    def _create_delta_table_for_docs(self):
+        """
+        Create Delta table to store documents for Vector Search.
+        
+        Table schema:
+        - id: Unique document ID
+        - path: Document path (UC Volume)
+        - content: Document text
+        - embedding: Vector (generated by Vector Search)
+        - metadata: Additional info (JSON)
+        """
+        from databricks.sdk import WorkspaceClient
+        
+        w = self.workspace_client or WorkspaceClient()
+        
+        # SQL to create table
+        create_table_sql = f"""
+        CREATE TABLE IF NOT EXISTS {self.delta_table} (
+            id STRING NOT NULL,
+            path STRING NOT NULL,
+            content STRING NOT NULL,
+            metadata STRING,
+            PRIMARY KEY(id)
+        ) USING DELTA
+        TBLPROPERTIES (delta.enableChangeDataFeed = true)
+        """
+        
+        try:
+            # Execute via SQL API
+            w.statement_execution.execute_statement(
+                warehouse_id=self._get_warehouse_id(),
+                statement=create_table_sql,
+                wait_timeout="30s"
+            )
+            print(f"   ✓ Delta table created/validated: {self.delta_table}")
+        except Exception as e:
+            print(f"   ⚠️  Delta table creation: {e}")
+    
+    def _get_warehouse_id(self):
+        """Get a SQL warehouse ID for executing SQL statements"""
+        from databricks.sdk import WorkspaceClient
+        
+        w = self.workspace_client or WorkspaceClient()
+        
+        # Get first available warehouse
+        warehouses = list(w.warehouses.list())
+        if not warehouses:
+            raise ValueError("No SQL warehouse found. Please create one in Databricks.")
+        
+        return warehouses[0].id
+    
+    def _create_vector_search_index(self):
+        """
+        Create Vector Search index on the Delta table.
+        
+        The index will:
+        - Use the 'content' column for embeddings
+        - Auto-generate embeddings using the specified model
+        - Sync automatically via Delta Change Data Feed
+        """
+        from databricks.sdk import WorkspaceClient
+        from databricks.sdk.service.vectorsearch import (
+            DeltaSyncVectorIndexSpecRequest,
+            EmbeddingSourceColumn,
+            VectorIndexType,
+            PipelineType
+        )
+        
+        w = self.workspace_client or WorkspaceClient()
+        
+        try:
+            # Check if index exists
+            try:
+                index = w.vector_search_indexes.get_index(self.vs_index)
+                print(f"   ✓ Vector Search index exists: {index.name}")
+                return
+            except:
+                pass  # Index doesn't exist, create it
+            
+            # Create index
+            print(f"   🔧 Creating Vector Search index (this may take a few minutes)...")
+            
+            w.vector_search_indexes.create_index(
+                name=self.vs_index,
+                endpoint_name=self.vs_endpoint,
+                primary_key="id",
+                index_type=VectorIndexType.DELTA_SYNC,
+                delta_sync_index_spec=DeltaSyncVectorIndexSpecRequest(
+                    source_table=self.delta_table,
+                    pipeline_type=PipelineType.TRIGGERED,  # TRIGGERED for manual sync, CONTINUOUS for auto-sync
+                    embedding_source_columns=[
+                        EmbeddingSourceColumn(
+                            name="content",
+                            embedding_model_endpoint_name=self.embedding_model
+                        )
+                    ]
+                )
+            )
+            
+            print(f"   ✓ Vector Search index created: {self.vs_index}")
+            print(f"   ⏳ Index is syncing... This may take a few minutes for first sync")
+        
+        except Exception as e:
+            print(f"   ⚠️  Vector Search index creation: {e}")
+            raise
+    
+    def _auto_index_documents(self):
+        """
+        Auto-index documents from UC Volume:
+        - List files in UC Volume
+        - Check which are new/modified
+        - Parse and embed new documents
+        - Store in backend
+        """
+        print(f"📄 Checking documents in {self.source}...")
+        
+        try:
+            # Get files from UC Volume
+            files = self._list_uc_volume_files(self.source)
+            
+            if not files:
+                print("   ⚠️  No files found in UC Volume")
+                return
+            
+            # Check which files need indexing
+            new_files = self._get_new_files(files)
+            
+            if not new_files:
+                print(f"   ✅ All {len(files)} documents already indexed")
+                return
+            
+            print(f"   🔄 Indexing {len(new_files)} new/modified documents...")
+            
+            indexed_count = 0
+            for file_path in new_files:
+                try:
+                    self._index_document(file_path)
+                    indexed_count += 1
+                except Exception as e:
+                    print(f"   ⚠️  Failed to index {file_path}: {e}")
+            
+            print(f"   ✅ Indexed {indexed_count}/{len(new_files)} documents")
+        
+        except Exception as e:
+            print(f"   ⚠️  Auto-indexing failed: {e}")
+    
+    def _list_uc_volume_files(self, volume_path: str) -> List[str]:
+        """
+        List files in UC Volume.
+        
+        Supports:
+        - UC Volume paths: /Volumes/catalog/schema/volume/path
+        - DBFS paths: dbfs:/Volumes/...
+        - Local paths (for testing)
+        """
+        files = []
+        
+        try:
+            # Normalize path
+            if volume_path.startswith('dbfs:'):
+                volume_path = volume_path[5:]  # Remove dbfs: prefix
+            
+            # Use Databricks Files API for UC Volumes
+            if volume_path.startswith('/Volumes/'):
+                token = self._get_auth_token()
+                
+                # List files via API
+                response = requests.get(
+                    f"{self.databricks_host}/api/2.0/fs/directories{volume_path}",
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    contents = response.json().get('contents', [])
+                    for item in contents:
+                        if not item.get('is_directory', False):
+                            file_path = item.get('path', '')
+                            if file_path.endswith(('.txt', '.md', '.pdf', '.docx', '.html')):
+                                files.append(file_path)
+                else:
+                    print(f"   ⚠️  API error {response.status_code}: {response.text[:100]}")
+            
+            # Fallback: If volume is mounted as local path (for local testing)
+            elif os.path.exists(volume_path):
+                for root, _, filenames in os.walk(volume_path):
+                    for filename in filenames:
+                        if filename.endswith(('.txt', '.md', '.pdf', '.docx', '.html')):
+                            files.append(os.path.join(root, filename))
+        
+        except Exception as e:
+            print(f"   ⚠️  Could not list files: {e}")
+        
+        return files
+    
+    def _get_new_files(self, files: List[str]) -> List[str]:
+        """Check which files are new or modified"""
+        if self.backend != "pgvector":
+            return files  # For now, always re-index for non-pgvector
+        
+        new_files = []
+        
+        for file_path in files:
+            # Calculate file hash
+            file_hash = self._get_file_hash(file_path)
+            
+            # Check if already indexed with same hash
+            result = self.lakebase.query(
+                "SELECT 1 FROM embeddings WHERE document_path = %s AND file_hash = %s LIMIT 1",
+                (file_path, file_hash),
+                fetch_one=True
+            )
+            
+            if not result:
+                new_files.append(file_path)
+        
+        return new_files
+    
+    def _read_file_content(self, file_path: str) -> bytes:
+        """
+        Read file content from UC Volume or local filesystem.
+        
+        Args:
+            file_path: Path to file (/Volumes/... or local path)
+        
+        Returns:
+            File content as bytes
+        """
+        # UC Volume path - use API
+        if file_path.startswith('/Volumes/'):
+            token = self._get_auth_token()
+            response = requests.get(
+                f"{self.databricks_host}/api/2.0/fs/files{file_path}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=60
+            )
+            if response.status_code == 200:
+                return response.content
+            else:
+                raise ValueError(f"Failed to read {file_path}: {response.status_code}")
+        
+        # Local file
+        else:
+            with open(file_path, 'rb') as f:
+                return f.read()
+    
+    def _get_file_hash(self, file_path: str) -> str:
+        """Calculate MD5 hash of file"""
+        try:
+            content = self._read_file_content(file_path)
+            return hashlib.md5(content).hexdigest()
+        except Exception as e:
+            print(f"   ⚠️  Could not hash {file_path}: {e}")
+            return str(time.time())  # Fallback to timestamp
+    
+    def _index_document(self, file_path: str):
+        """
+        Index a single document:
+        1. Parse/chunk document
+        2. For pgvector: Generate embeddings and store
+        3. For vector_search: Write to Delta table (Vector Search will embed)
+        """
+        # Parse document into chunks
+        chunks = self._parse_document(file_path)
+        
+        # Get file hash
+        file_hash = self._get_file_hash(file_path)
+        
+        if self.backend == "pgvector":
+            # pgvector: We generate embeddings and store them
+            # Delete old embeddings for this document
+            self.lakebase.execute(
+                "DELETE FROM embeddings WHERE document_path = %s",
+                (file_path,)
+            )
+            
+            # Index each chunk with embeddings
+            for i, chunk in enumerate(chunks):
+                embedding = self._get_embedding(chunk)
+                
+                self.lakebase.execute("""
+                    INSERT INTO embeddings 
+                    (document_path, chunk_id, content, embedding, file_hash, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (document_path, chunk_id) DO UPDATE
+                    SET content = EXCLUDED.content,
+                        embedding = EXCLUDED.embedding,
+                        file_hash = EXCLUDED.file_hash
+                """, (
+                    file_path,
+                    i,
+                    chunk,
+                    f"[{','.join(map(str, embedding))}]",  # PostgreSQL array format
+                    file_hash,
+                    json.dumps({"source": file_path, "chunk": i})
+                ))
+        
+        elif self.backend == "vector_search":
+            # Vector Search: Write to Delta table (no embeddings needed, Vector Search generates them)
+            from databricks.sdk import WorkspaceClient
+            import hashlib
+            
+            w = self.workspace_client or WorkspaceClient()
+            
+            # Write each chunk as a row in Delta table
+            for i, chunk in enumerate(chunks):
+                doc_id = hashlib.md5(f"{file_path}_{i}".encode()).hexdigest()
+                
+                # Insert into Delta table via SQL
+                insert_sql = f"""
+                MERGE INTO {self.delta_table} AS target
+                USING (SELECT '{doc_id}' as id, '{file_path}' as path, '{chunk.replace("'", "''")}' as content, '{json.dumps({"chunk": i, "file_hash": file_hash})}' as metadata) AS source
+                ON target.id = source.id
+                WHEN MATCHED THEN UPDATE SET path = source.path, content = source.content, metadata = source.metadata
+                WHEN NOT MATCHED THEN INSERT (id, path, content, metadata) VALUES (source.id, source.path, source.content, source.metadata)
+                """
+                
+                try:
+                    w.statement_execution.execute_statement(
+                        warehouse_id=self._get_warehouse_id(),
+                        statement=insert_sql,
+                        wait_timeout="30s"
+                    )
+                except Exception as e:
+                    print(f"   ⚠️  Failed to insert chunk {i} for {file_path}: {e}")
+    
+    def _parse_document(self, file_path: str) -> List[str]:
+        """
+        Parse document into chunks.
+        
+        TODO: Use ai_parse or ai_extract for better parsing
+        For now: Simple text chunking
+        """
+        try:
+            # Read file content
+            content_bytes = self._read_file_content(file_path)
+            content = content_bytes.decode('utf-8')
+            
+            # Simple chunking by character count
+            chunks = []
+            words = content.split()
+            current_chunk = []
+            current_length = 0
+            
+            for word in words:
+                current_chunk.append(word)
+                current_length += len(word) + 1
+                
+                if current_length >= self.chunk_size:
+                    chunks.append(' '.join(current_chunk))
+                    current_chunk = []
+                    current_length = 0
+            
+            # Add remaining chunk
+            if current_chunk:
+                chunks.append(' '.join(current_chunk))
+            
+            return chunks if chunks else [content[:self.chunk_size]]
+        
+        except Exception as e:
+            print(f"   ⚠️  Could not parse {file_path}: {e}")
+            return []
+    
+    def _get_embedding(self, text: str) -> List[float]:
+        """
+        Generate embedding using Databricks Foundation Model.
+        
+        Uses Databricks BGE-large-en model by default.
+        """
+        try:
+            # Get auth token (OAuth M2M for Databricks Apps)
+            token = self._get_auth_token()
+            
+            # Call Databricks embedding endpoint
+            response = requests.post(
+                f"{self.databricks_host}/serving-endpoints/{self.embedding_model}/invocations",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                },
+                json={"input": [text]},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data["data"][0]["embedding"]
+            else:
+                raise ValueError(f"Embedding API error: {response.status_code}")
+        
+        except Exception as e:
+            print(f"   ⚠️  Embedding generation failed: {e}")
+            # Return zero vector as fallback
+            return [0.0] * 1024
+    
+    def _get_auth_token(self) -> str:
+        """Get Databricks auth token (OAuth M2M for Apps, token for notebooks)"""
+        # Check for OAuth M2M credentials (Databricks Apps)
+        client_id = os.getenv("DATABRICKS_CLIENT_ID")
+        client_secret = os.getenv("DATABRICKS_CLIENT_SECRET")
+        
+        if client_id and client_secret:
+            from requests.auth import HTTPBasicAuth
+            response = requests.post(
+                f"{self.databricks_host}/oidc/v1/token",
+                data={"grant_type": "client_credentials", "scope": "all-apis"},
+                auth=HTTPBasicAuth(client_id, client_secret)
+            )
+            return response.json()['access_token']
+        
+        # Fallback to token
+        token = os.getenv("DATABRICKS_TOKEN")
+        if token:
+            return token
+        
+        # Fallback to SDK config
+        if SDK_AVAILABLE and self.workspace_client:
+            return self.workspace_client.config.token
+        
+        raise ValueError("No Databricks authentication found")
+    
+    def retrieve(self, query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Retrieve relevant documents for query.
+        
+        Args:
+            query: Search query
+            top_k: Number of results (default: from config)
+        
+        Returns:
+            List of documents with content and metadata
+        """
+        if not self._initialized:
+            return []
+        
+        top_k = top_k or self.top_k
+        
+        try:
+            if self.backend == "pgvector":
+                return self._retrieve_pgvector(query, top_k)
+            elif self.backend == "vector_search":
+                return self._retrieve_vector_search(query, top_k)
+        except Exception as e:
+            print(f"⚠️  Retrieval failed: {e}")
+            return []
+    
+    def _retrieve_pgvector(self, query: str, top_k: int) -> List[Dict[str, Any]]:
+        """Retrieve from pgvector using cosine similarity"""
+        # Get query embedding
+        query_embedding = self._get_embedding(query)
+        
+        # Query pgvector
+        results = self.lakebase.query(f"""
+            SELECT 
+                content,
+                document_path,
+                metadata,
+                1 - (embedding <=> '[{','.join(map(str, query_embedding))}]'::vector) AS similarity
+            FROM embeddings
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> '[{','.join(map(str, query_embedding))}]'::vector
+            LIMIT %s
+        """, (top_k,))
+        
+        return [
+            {
+                "content": r["content"],
+                "source": r["document_path"],
+                "similarity": float(r["similarity"]),
+                "metadata": r.get("metadata")
+            }
+            for r in results
+        ]
+    
+    def _retrieve_vector_search(self, query: str, top_k: int) -> List[Dict[str, Any]]:
+        """
+        Retrieve from Databricks Vector Search.
+        
+        Args:
+            query: Search query text
+            top_k: Number of results to return
+        
+        Returns:
+            List of documents with content, source, and similarity score
+        """
+        from databricks.sdk import WorkspaceClient
+        
+        try:
+            w = self.workspace_client or WorkspaceClient()
+            
+            # Query Vector Search index
+            results = w.vector_search_indexes.query_index(
+                index_name=self.vs_index,
+                query_text=query,
+                columns=["id", "path", "content", "metadata"],
+                num_results=top_k
+            )
+            
+            # Format results
+            docs = []
+            if results.result and results.result.data_array:
+                for row in results.result.data_array:
+                    # row format: [id, path, content, metadata, score]
+                    if len(row) >= 5:
+                        docs.append({
+                            "content": row[2],  # content column
+                            "source": row[1],   # path column
+                            "similarity": float(row[4]) if row[4] else 0.0,  # score
+                            "metadata": json.loads(row[3]) if row[3] else {}
+                        })
+            
+            return docs
+        
+        except Exception as e:
+            print(f"⚠️  Vector Search retrieval failed: {e}")
+            return []
+    
+    def refresh(self):
+        """Manually refresh index (check for new documents)"""
+        if self.source:
+            print("\n🔄 Refreshing document index...")
+            self._auto_index_documents()
+

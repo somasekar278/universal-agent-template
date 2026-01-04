@@ -91,43 +91,51 @@ class DatabricksLLM:
         self._cached_token = None
         self._token_expiry = 0
         
-        if workspace_client and SDK_AVAILABLE:
+        # Priority order for authentication:
+        # 1. Explicit OAuth M2M (DATABRICKS_CLIENT_ID + SECRET)
+        # 2. Static token (DATABRICKS_TOKEN)
+        # 3. Databricks SDK config (local dev)
+        
+        if self.oauth_client_id and self.oauth_client_secret:
+            # OAuth M2M (highest priority - for Databricks Apps)
+            self.workspace_client = None
+            self.databricks_host = os.getenv('DATABRICKS_HOST', '')
+            self.auth_method = "OAuth M2M"
+        elif os.getenv('DATABRICKS_TOKEN'):
+            # Static token (second priority - for notebooks)
+            self.workspace_client = None
+            self.databricks_host = os.getenv('DATABRICKS_HOST', '')
+            self.auth_method = "Token"
+        elif workspace_client and SDK_AVAILABLE:
+            # Explicit SDK client provided
             self.workspace_client = workspace_client
             self.databricks_host = workspace_client.config.host.rstrip('/')
             self.auth_method = "SDK"
         elif SDK_AVAILABLE:
+            # Try SDK config (lowest priority - for local dev)
             try:
                 self.workspace_client = WorkspaceClient()
                 self.databricks_host = self.workspace_client.config.host.rstrip('/')
                 self.auth_method = "SDK"
             except Exception:
-                self.workspace_client = None
-                self.databricks_host = os.getenv('DATABRICKS_HOST', '')
-                self.auth_method = None
-        else:
-            # No SDK available
-            self.workspace_client = None
-            self.databricks_host = os.getenv('DATABRICKS_HOST', '')
-            self.auth_method = None
-        
-        # Ensure https:// scheme
-        if self.databricks_host and not self.databricks_host.startswith('http'):
-            self.databricks_host = f'https://{self.databricks_host}'
-        self.databricks_host = self.databricks_host.rstrip('/')
-        
-        # Determine auth method if not already set
-        if not self.auth_method:
-            if self.oauth_client_id and self.oauth_client_secret:
-                self.auth_method = "OAuth M2M"
-            elif os.getenv('DATABRICKS_TOKEN'):
-                self.auth_method = "Token"
-            else:
                 raise ValueError(
                     "No authentication method available. Provide one of:\n"
                     "- DATABRICKS_CLIENT_ID + DATABRICKS_CLIENT_SECRET (Databricks Apps)\n"
                     "- DATABRICKS_TOKEN (notebooks/clusters)\n"
                     "- databricks-sdk config (local dev)"
                 )
+        else:
+            raise ValueError(
+                "No authentication method available. Provide one of:\n"
+                "- DATABRICKS_CLIENT_ID + DATABRICKS_CLIENT_SECRET (Databricks Apps)\n"
+                "- DATABRICKS_TOKEN (notebooks/clusters)\n"
+                "- Install databricks-sdk for local dev"
+            )
+        
+        # Ensure https:// scheme
+        if self.databricks_host and not self.databricks_host.startswith('http'):
+            self.databricks_host = f'https://{self.databricks_host}'
+        self.databricks_host = self.databricks_host.rstrip('/')
         
         if not self.databricks_host:
             raise ValueError("DATABRICKS_HOST not found")
@@ -152,6 +160,8 @@ class DatabricksLLM:
                 return self._cached_token
             
             # Get new OAuth token
+            from requests.auth import HTTPBasicAuth
+            
             token_url = f"{self.databricks_host}/oidc/v1/token"
             response = requests.post(
                 token_url,
@@ -159,7 +169,7 @@ class DatabricksLLM:
                     "grant_type": "client_credentials",
                     "scope": "all-apis"
                 },
-                auth=(self.oauth_client_id, self.oauth_client_secret),
+                auth=HTTPBasicAuth(self.oauth_client_id, self.oauth_client_secret),
                 timeout=30
             )
             response.raise_for_status()
@@ -212,17 +222,9 @@ class DatabricksLLM:
             )
             print(response["content"])
         """
+        # Execute chat completion (tracing handled by parent span if active)
         try:
-            # Apply MLflow tracing if enabled
-            if self.auto_trace:
-                with mlflow.start_span(name="databricks_llm_chat") as span:
-                    span.set_inputs({"messages": messages, "tools": tools})
-                    result = await self._do_chat(messages, tools, temperature, max_tokens, **kwargs)
-                    span.set_outputs(result)
-                    return result
-            else:
-                return await self._do_chat(messages, tools, temperature, max_tokens, **kwargs)
-        
+            return await self._do_chat(messages, tools, temperature, max_tokens, **kwargs)
         except Exception as e:
             logger.error(f"❌ Chat completion failed: {e}")
             raise

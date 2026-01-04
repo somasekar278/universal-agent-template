@@ -94,17 +94,21 @@ class Lakebase:
         database: Optional[str] = None,
         user: Optional[str] = None,
         password: Optional[str] = None,
-        port: int = 5432
+        port: int = 5432,
+        sslmode: Optional[str] = None,
+        channel_binding: Optional[str] = None
     ):
         """
         Initialize Lakebase (PostgreSQL) connection.
         
         Args:
-            host: Lakebase host (env: LAKEBASE_HOST)
-            database: Database name (env: LAKEBASE_DATABASE)
-            user: Username (env: LAKEBASE_USER)
-            password: Password (env: LAKEBASE_PASSWORD)
+            host: Lakebase host (env: LAKEBASE_HOST or PGHOST)
+            database: Database name (env: LAKEBASE_DATABASE or PGDATABASE)
+            user: Username (env: LAKEBASE_USER or PGUSER)
+            password: Password (env: LAKEBASE_PASSWORD or PGPASSWORD)
             port: Port (default: 5432)
+            sslmode: SSL mode (env: PGSSLMODE) - 'require', 'prefer', etc.
+            channel_binding: Channel binding (env: PGCHANNELBINDING) - 'require', 'prefer', 'disable'
         
         Raises:
             ImportError: If psycopg2 is not installed
@@ -115,16 +119,19 @@ class Lakebase:
                 "Install with: pip install psycopg2-binary"
             )
         
-        self.host = host or os.getenv("LAKEBASE_HOST")
-        self.database = database or os.getenv("LAKEBASE_DATABASE")
-        self.user = user or os.getenv("LAKEBASE_USER")
-        self.password = password or os.getenv("LAKEBASE_PASSWORD")
+        # Support both LAKEBASE_* and PG* environment variables
+        self.host = host or os.getenv("LAKEBASE_HOST") or os.getenv("PGHOST")
+        self.database = database or os.getenv("LAKEBASE_DATABASE") or os.getenv("PGDATABASE")
+        self.user = user or os.getenv("LAKEBASE_USER") or os.getenv("PGUSER")
+        self.password = password or os.getenv("LAKEBASE_PASSWORD") or os.getenv("PGPASSWORD")
         self.port = port
+        self.sslmode = sslmode or os.getenv("PGSSLMODE", "prefer")
+        self.channel_binding = channel_binding or os.getenv("PGCHANNELBINDING", "prefer")
         
         if not all([self.host, self.database, self.user, self.password]):
             raise ValueError(
                 "Missing Lakebase credentials. Provide via arguments or environment variables:\n"
-                "LAKEBASE_HOST, LAKEBASE_DATABASE, LAKEBASE_USER, LAKEBASE_PASSWORD"
+                "LAKEBASE_HOST/PGHOST, LAKEBASE_DATABASE/PGDATABASE, LAKEBASE_USER/PGUSER, LAKEBASE_PASSWORD/PGPASSWORD"
             )
         
         self.connection = None
@@ -132,13 +139,27 @@ class Lakebase:
     def connect(self):
         """Establish connection to Lakebase."""
         if self.connection is None or self.connection.closed:
-            self.connection = psycopg2.connect(
-                host=self.host,
-                database=self.database,
-                user=self.user,
-                password=self.password,
-                port=self.port
-            )
+            # Build connection parameters
+            conn_params = {
+                "host": self.host,
+                "database": self.database,
+                "user": self.user,
+                "password": self.password,
+                "port": self.port,
+                "sslmode": self.sslmode,
+            }
+            
+            # Add channel_binding if specified
+            # Note: channel_binding support requires psycopg2 2.8+
+            if self.channel_binding and self.channel_binding != "prefer":
+                # Only set if explicitly required/disabled, not for 'prefer' (default)
+                try:
+                    conn_params["channel_binding"] = self.channel_binding
+                except Exception:
+                    # Older psycopg2 versions don't support this parameter
+                    pass
+            
+            self.connection = psycopg2.connect(**conn_params)
             print(f"✅ Connected to Lakebase: {self.host}/{self.database}")
     
     def close(self):
@@ -207,11 +228,18 @@ class Lakebase:
                 role VARCHAR(50) NOT NULL,
                 content TEXT NOT NULL,
                 timestamp TIMESTAMP DEFAULT NOW(),
-                metadata JSONB,
-                INDEX idx_session (session_id),
-                INDEX idx_timestamp (timestamp)
+                metadata JSONB
             )
         """)
+        
+        # Create indexes separately (PostgreSQL syntax)
+        try:
+            self.execute("CREATE INDEX IF NOT EXISTS idx_session ON conversations(session_id)")
+            self.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON conversations(timestamp)")
+        except Exception:
+            # Indexes might already exist, that's okay
+            pass
+        
         print("✅ Created conversations table")
     
     def store_message(

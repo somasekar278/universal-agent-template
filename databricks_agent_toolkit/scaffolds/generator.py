@@ -110,10 +110,21 @@ class ScaffoldGenerator:
             )
         
         logger.info(f"✅ Generated {level} scaffold: {name}")
+        
+        # Validate generated scaffold
+        try:
+            from databricks_agent_toolkit.scaffolds.validator import validate_scaffold
+            logger.info(f"\n🔍 Validating generated scaffold...")
+            is_valid = validate_scaffold(str(output_path), level)
+            if not is_valid:
+                logger.warning("   ⚠️  Validation found issues. Please review above.")
+        except Exception as e:
+            logger.warning(f"   ⚠️  Validation skipped: {e}")
+        
         logger.info(f"\n📁 Next steps:")
         logger.info(f"   cd {output_dir}")
         logger.info(f"   pip install -r requirements.txt")
-        logger.info(f"   python main.py  # Or see README.md")
+        logger.info(f"   python app.py  # Or see README.md")
     
     def _get_template_mapping(self, level: str) -> Dict[str, str]:
         """
@@ -134,6 +145,7 @@ class ScaffoldGenerator:
                 "app.py": f"{level}/app.py.jinja2",
                 "assistant.py": f"{level}/assistant.py.jinja2",  # CLI version
                 "memory_manager.py": f"{level}/memory_manager.py.jinja2",
+                "rag_manager.py": f"{level}/rag_manager.py.jinja2",
                 "config.yaml": f"{level}/config.yaml.jinja2",
                 "requirements.txt": f"{level}/requirements.txt.jinja2",
                 "databricks-app.yml": f"{level}/databricks-app.yml.jinja2",

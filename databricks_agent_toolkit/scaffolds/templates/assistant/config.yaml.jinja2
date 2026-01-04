@@ -24,6 +24,33 @@ memory:
   # Memory settings
   max_history: 20  # Maximum number of messages to keep in context
 
+# RAG Configuration (Optional - for knowledge retrieval)
+rag:
+  enabled: false  # Set to true to enable RAG
+  
+  # Document source (UC Volume path or local path for testing)
+  # UC Volume example: /Volumes/main/default/agent_docs
+  # Local path example: /path/to/docs
+  source: null
+  
+  # Backend: pgvector (default, cost-effective) or vector_search (enterprise-scale)
+  backend: pgvector
+  
+  # Retrieval settings
+  top_k: 5  # Number of documents to retrieve
+  chunk_size: 500  # Characters per chunk
+  
+  # Embedding model
+  embedding_model: databricks-bge-large-en
+  
+  # pgvector index type (only for pgvector backend)
+  # Options: ivfflat (faster indexing, good for updates) or hnsw (better recall, read-heavy)
+  index_type: ivfflat  # Default: ivfflat
+  
+  # Vector Search config (only if backend: vector_search)
+  vector_search_endpoint: one-env-shared-endpoint-0  # Your Vector Search endpoint name
+  index_name: null  # e.g., main.default.docs_index (catalog.schema.index_name)
+
 # MLflow Configuration
 mlflow:
   auto_trace: true

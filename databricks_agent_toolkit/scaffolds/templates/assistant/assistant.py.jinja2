@@ -35,6 +35,7 @@ except ImportError:
     sys.exit(1)
 
 from memory_manager import MemoryManager
+from rag_manager import RAGManager
 
 
 # ============================================================================
@@ -59,6 +60,7 @@ class Assistant:
         self.config = config
         self.model_config = config["model"]
         self.memory_config = config["memory"]
+        self.rag_config = config.get("rag", {})
         self.mlflow_config = config.get("mlflow", {})
         
         # Initialize LLM
@@ -79,6 +81,21 @@ class Assistant:
         # Initialize database
         self.memory.initialize()
         
+        # Initialize RAG (optional)
+        self.rag_enabled = self.rag_config.get("enabled", False)
+        self.rag = None
+        if self.rag_enabled:
+            try:
+                self.rag = RAGManager(
+                    config=self.rag_config,
+                    lakebase_client=self.memory.lakebase,
+                    workspace_client=None
+                )
+            except Exception as e:
+                print(f"⚠️  RAG initialization failed: {e}")
+                print("   Assistant will work without RAG")
+                self.rag_enabled = False
+        
         # Streaming mode
         self.streaming = self.model_config.get("streaming", False)
         
@@ -88,7 +105,7 @@ class Assistant:
     
     async def chat(self, session_id: str, user_message: str) -> str:
         """
-        Process user message with conversation history.
+        Process user message with conversation history and RAG.
         
         Args:
             session_id: Unique session identifier
@@ -107,13 +124,35 @@ class Assistant:
         # Get conversation history
         history = self.memory.get_messages_for_llm(session_id)
         
-        # Add system prompt if configured
+        # Retrieve relevant documents (RAG)
+        context = ""
+        if self.rag_enabled and self.rag:
+            try:
+                docs = self.rag.retrieve(user_message)
+                if docs:
+                    context = "\n\n".join([
+                        f"[Source: {doc['source']}]\n{doc['content']}"
+                        for doc in docs
+                    ])
+            except Exception as e:
+                print(f"⚠️  RAG retrieval failed: {e}")
+        
+        # Build system prompt with context
+        system_prompt = self.model_config.get("system_prompt", "You are a helpful assistant.")
+        if context:
+            system_prompt = f"""You are a helpful assistant. Use the following context to answer questions accurately.
+
+Context:
+{context}
+
+{system_prompt}"""
+        
+        # Add system prompt
         messages = []
-        if "system_prompt" in self.model_config:
-            messages.append({
-                "role": "system",
-                "content": self.model_config["system_prompt"]
-            })
+        messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
         
         # Add history + current message
         messages.extend(history)
@@ -178,6 +217,7 @@ async def main():
     
     This assistant remembers your conversation across the session.
     Type 'exit' to quit, 'clear' to clear history, 'info' for session stats.
+    Type 'refresh' to re-index documents (if RAG enabled).
     """)
     
     # Load config
@@ -191,6 +231,8 @@ async def main():
     print(f"📝 Session ID: {session_id}")
     print(f"💾 Memory: Lakebase (PostgreSQL)")
     print(f"🤖 Model: {config['model']['endpoint']}")
+    if config.get('rag', {}).get('enabled'):
+        print(f"📚 RAG: Enabled ({config['rag'].get('backend', 'pgvector')})")
     print(f"📊 MLflow: {config['mlflow'].get('experiment', '/Shared/{{ name }}')}")
     print()
     
@@ -223,6 +265,13 @@ async def main():
                 print(f"   Messages: {info['message_count']}")
                 print(f"   First: {info['first_message']}")
                 print(f"   Last: {info['last_message']}\n")
+                continue
+            
+            if user_input.lower() == "refresh":
+                if assistant.rag_enabled and assistant.rag:
+                    assistant.rag.refresh()
+                else:
+                    print("⚠️  RAG not enabled\n")
                 continue
             
             # Get assistant response

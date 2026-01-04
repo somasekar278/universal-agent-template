@@ -8,6 +8,8 @@ An intelligent assistant that **remembers conversations** using Lakebase (Databr
 ✅ **Lakebase Integration** - Use managed PostgreSQL for state  
 ✅ **Session Management** - Track conversations by user/session  
 ✅ **Context-Aware Responses** - Reference past conversations  
+✅ **RAG (Optional)** - Knowledge retrieval from documents  
+✅ **Vector Search** - pgvector or Databricks Vector Search  
 ✅ **MLflow Tracing** - Track all interactions
 
 ---
@@ -64,7 +66,7 @@ python app.py
 
 ## How It Works
 
-### Memory Flow
+### Memory + RAG Flow
 
 ```
 User Message
@@ -72,6 +74,10 @@ User Message
 Store in Lakebase (PostgreSQL)
     ↓
 Retrieve conversation history (last 20 messages)
+    ↓
+[If RAG enabled] Retrieve relevant documents (pgvector/Vector Search)
+    ↓
+Combine: history + documents + user message
     ↓
 Send to LLM with full context
     ↓
@@ -101,6 +107,142 @@ conversations
 ```
 
 Reference: [Databricks Stateful Agents](https://docs.databricks.com/aws/en/generative-ai/agent-framework/stateful-agents)
+
+---
+
+## Adding RAG (Optional)
+
+### What is RAG?
+
+**RAG (Retrieval-Augmented Generation)** lets your assistant answer questions using your own documents/knowledge base, not just conversation history.
+
+### When to Use RAG
+
+- **Without RAG:** Simple conversational assistant (remembers chat history)
+- **With RAG:** Knowledge-powered assistant (chat history + document search)
+
+### Enable RAG in 3 Steps
+
+#### Step 1: Prepare Documents
+
+Put your documents in a UC Volume:
+```bash
+# In Databricks workspace
+dbfs:/Volumes/main/docs/source/
+├── product_manual.pdf
+├── faq.md
+├── technical_docs.txt
+└── ... more docs
+```
+
+Supported formats: `.txt`, `.md`, `.pdf`, `.docx`, `.html`
+
+#### Step 2: Enable RAG in `config.yaml`
+
+```yaml
+rag:
+  enabled: true
+  source: /Volumes/main/docs/source  # Your UC Volume path
+  backend: pgvector  # or vector_search
+  top_k: 5  # Number of docs to retrieve per query
+```
+
+#### Step 3: Run
+
+```bash
+python app.py
+# On first run:
+# 🔧 Setting up RAG with pgvector...
+# ✓ pgvector extension enabled
+# ✓ Embeddings table ready
+# ✓ Vector index created
+# 📄 Checking documents in /Volumes/main/docs/source...
+# 🔄 Indexing 42 new documents...
+# ✅ Indexed 42 documents
+# ✅ RAG ready (pgvector)!
+```
+
+**That's it!** Your assistant now uses documents to answer questions.
+
+### pgvector vs Vector Search
+
+| Feature | pgvector (Default) | Databricks Vector Search |
+|---------|-------------------|-------------------------|
+| **Best For** | Small-medium knowledge bases | Enterprise-scale |
+| **Documents** | Thousands | Millions |
+| **Setup** | Auto (1 config line) | Manual index creation |
+| **Cost** | Included in Lakebase | Separate endpoints |
+| **Location** | Co-located with memory | Separate service |
+
+**Recommendation:** Start with `pgvector`, switch to `vector_search` if you need scale.
+
+### Switching to Vector Search
+
+```yaml
+rag:
+  enabled: true
+  source: /Volumes/main/docs/source
+  backend: vector_search  # Changed!
+  vector_search_endpoint: one-env-shared-endpoint-0  # Your endpoint
+  index_name: main.default.docs_index  # catalog.schema.index_name
+  embedding_model: databricks-bge-large-en  # For auto-embedding
+```
+
+**What happens on first run:**
+1. ✅ Creates Delta table: `main.default.docs_index_source`
+2. ✅ Creates Vector Search index on the Delta table
+3. ✅ Indexes documents from UC Volume to Delta table
+4. ✅ Vector Search auto-generates embeddings
+5. ✅ Index syncs automatically via Change Data Feed
+
+**Prerequisites:**
+- SQL Warehouse (for Delta table operations)
+- Vector Search endpoint (create in Databricks UI if needed)
+- Permissions to create tables in the specified catalog/schema
+
+You'll need to manually create the Vector Search index:
+```sql
+-- In Databricks SQL
+CREATE TABLE main.docs.source_table AS
+SELECT * FROM read_files('/Volumes/main/docs/source');
+
+-- Create Vector Search index (via UI or API)
+```
+
+See [Databricks Vector Search docs](https://docs.databricks.com/vector-search/).
+
+### How RAG Works
+
+```
+User: "How do I deploy to production?"
+    ↓
+1. Get conversation history (Lakebase)
+2. Retrieve relevant docs (pgvector/Vector Search)
+    - "deployment_guide.md" (similarity: 0.92)
+    - "production_checklist.md" (similarity: 0.88)
+    - ...
+3. Combine history + retrieved docs
+4. Send to LLM with full context
+5. LLM answers using your docs ✨
+```
+
+### Incremental Indexing
+
+RAG automatically detects new documents:
+
+```bash
+# Add new docs to UC Volume
+/Volumes/main/docs/source/new_guide.md
+
+# Restart app or type 'refresh' in CLI
+python app.py
+
+# 📄 Checking documents...
+# 🔄 Indexing 1 new document...
+# ✅ Indexed 1 document
+```
+
+**Auto-refresh:** RAG checks for new docs on every app startup.
 
 ---
 
@@ -134,6 +276,35 @@ memory:
 **Trade-offs:**
 - **More history** = Better context, higher latency, more tokens
 - **Less history** = Faster, cheaper, but may forget earlier context
+
+### RAG Settings
+
+```yaml
+rag:
+  enabled: true
+  source: /Volumes/main/docs/source  # UC Volume path
+  backend: pgvector  # or vector_search
+  top_k: 5  # Documents to retrieve
+  chunk_size: 500  # Characters per chunk
+  embedding_model: databricks-bge-large-en
+  index_type: ivfflat  # or hnsw (pgvector only)
+```
+
+**Tuning:**
+- `top_k`: More = better context, slower, more tokens
+- `chunk_size`: Larger = more context per chunk, fewer chunks
+- `backend`: pgvector (simple) vs vector_search (scale)
+- `index_type`: **IVFFlat** (fast updates, 90-95% recall) vs **HNSW** (better accuracy, 95-99% recall, slower indexing)
+
+**Index Type Guidance (pgvector only):**
+
+| Use Case | Recommended Index |
+|----------|------------------|
+| Documents updated frequently | `ivfflat` (default) |
+| Read-heavy, static knowledge base | `hnsw` |
+| Need highest accuracy | `hnsw` |
+| Large datasets (>50k docs) | `ivfflat` |
+| Small, critical dataset | `hnsw` |
 
 ---
 
@@ -213,7 +384,24 @@ For **long-term memory** (persistent facts across sessions):
 
 ### "Context window exceeded"
 - Reduce `memory.max_history` in `config.yaml`
+- Reduce `rag.top_k` if RAG enabled
 - Or implement conversation summarization
+
+### "RAG setup failed" / "pgvector extension not found"
+- Ensure Lakebase instance supports extensions
+- Check Lakebase version (pgvector requires PostgreSQL 11+)
+- Try restarting Lakebase instance
+
+### "No documents indexed"
+- Verify UC Volume path is correct and accessible
+- Check file formats are supported (.txt, .md, .pdf, .docx, .html)
+- Ensure Databricks workspace has access to UC Volume
+- Try manual refresh: Type `refresh` in CLI or call `/api/rag/refresh` endpoint
+
+### "Embedding generation failed"
+- Verify `DATABRICKS_HOST` and `DATABRICKS_TOKEN` are set
+- Check embedding model endpoint is accessible
+- Default model: `databricks-bge-large-en` (ensure it's deployed)
 
 ---
 
