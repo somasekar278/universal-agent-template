@@ -136,7 +136,7 @@ CHAT_HTML = '''
     </div>
     
     <script>
-        const STREAMING_ENABLED = {{ 'true' if config.get("model", {}).get("streaming", False) else 'false' }};
+        const STREAMING_ENABLED = {{ '{{' }} streaming_enabled|lower {{ '}}' }};
         
         function sendMessage() {
             const input = document.getElementById('input-box');
@@ -260,7 +260,8 @@ def home():
     return render_template_string(
         CHAT_HTML,
         name=config.get("agent_name", "{{ name }}"),
-        model=config.get("model", {}).get("endpoint", "{{ model }}")
+        model=config.get("model", {}).get("endpoint", "{{ model }}"),
+        streaming_enabled=config.get("model", {}).get("streaming", False)
     )
 
 @app.route('/health')
