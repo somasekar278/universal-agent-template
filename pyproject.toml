@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "databricks-agent-toolkit"
-version = "0.1.17"
+version = "0.1.18"
 description = "Unified toolkit for building production agents on Databricks - pre-wired integrations for LangGraph, LangChain, and custom agents"
 readme = "README.md"
 requires-python = ">=3.9"
