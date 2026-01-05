@@ -86,6 +86,31 @@ databricks apps run-local --prepare-environment --debug
 # Navigate to http://localhost:8001
 ```
 
+## ⚡ Streaming vs. Non-Streaming
+
+The chatbot supports **two response modes**, configured in `config.yaml`:
+
+### **Non-Streaming (Default)**
+```yaml
+model:
+  streaming: false
+```
+- **Behavior:** Full response appears at once after thinking
+- **Use when:** Response speed is less critical, simpler deployment
+- **User experience:** "Thinking..." → Complete response
+
+### **Streaming (Server-Sent Events)**
+```yaml
+model:
+  streaming: true
+```
+- **Behavior:** Tokens appear word-by-word as they're generated
+- **Use when:** You want interactive, ChatGPT-like experience
+- **User experience:** Real-time response streaming
+- **Technical:** Uses SSE (`text/event-stream`) with `EventSource` JavaScript API
+
+**To switch modes:** Change `streaming: true/false` in `config.yaml` and redeploy.
+
 ## 📝 What to Customize
 
 ### **1. System Prompt** (chatbot.py, line 23)

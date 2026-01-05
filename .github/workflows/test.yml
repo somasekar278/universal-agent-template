@@ -1,0 +1,84 @@
+name: Tests & Quality Checks
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+        pip install pytest black flake8 isort
+    
+    - name: Check code formatting (Black)
+      run: black --check --line-length=120 databricks_agent_toolkit/
+    
+    - name: Check import sorting (isort)
+      run: isort --check --profile black --line-length 120 databricks_agent_toolkit/
+    
+    - name: Lint with flake8
+      run: flake8 databricks_agent_toolkit/ --max-line-length=120 --ignore=E203,W503
+    
+    - name: Check template sizes
+      run: python3 scripts/check_template_size.py
+    
+    - name: Run unit tests
+      run: pytest tests/ -v -m "not integration"
+    
+    - name: Test scaffold generation
+      run: |
+        python3 -c "
+        from databricks_agent_toolkit.scaffolds import ScaffoldGenerator
+        generator = ScaffoldGenerator()
+        generator.generate('chatbot', 'test-bot', '/tmp/test-bot', {'model': 'test-model'})
+        print('✅ Scaffold generation successful')
+        "
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+        pip install pytest requests
+    
+    - name: Run E2E tests
+      env:
+        DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+        DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+        DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      run: |
+        if [ -n "$DATABRICKS_HOST" ]; then
+          pytest tests/test_e2e_chatbot.py -v
+        else
+          echo "⚠️  Skipping E2E tests (no credentials)"
+        fi
+
