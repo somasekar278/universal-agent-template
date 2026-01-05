@@ -21,7 +21,7 @@ from enum import Enum
 class ChatInput(BaseModel):
     """
     Input for simple chatbot agents (Level 1).
-    
+
     Generic enough to work for any conversational agent.
     """
     question: str = Field(..., description="User's question or message")
@@ -33,7 +33,7 @@ class ChatInput(BaseModel):
 class ChatOutput(BaseModel):
     """
     Output from chatbot agents (Level 1).
-    
+
     Generic response format for conversational agents.
     """
     answer: str = Field(..., description="Agent's response")
@@ -49,7 +49,7 @@ class ChatOutput(BaseModel):
 class ContextAwareInput(BaseModel):
     """
     Input for context-aware agents with memory (Level 2).
-    
+
     Includes conversation history and context retrieval.
     """
     message: str = Field(..., description="Current user message")
@@ -66,7 +66,7 @@ class ContextAwareInput(BaseModel):
 class ContextAwareOutput(BaseModel):
     """
     Output from context-aware agents (Level 2).
-    
+
     Includes response with context information.
     """
     response: str = Field(..., description="Agent's response")
@@ -83,7 +83,7 @@ class ContextAwareOutput(BaseModel):
 class APIRequest(BaseModel):
     """
     Generic API request schema (Level 3).
-    
+
     Flexible schema for production APIs.
     """
     endpoint: str = Field(..., description="API endpoint or action")
@@ -96,7 +96,7 @@ class APIRequest(BaseModel):
 class APIResponse(BaseModel):
     """
     Generic API response schema (Level 3).
-    
+
     Standard response format for production APIs.
     """
     success: bool = Field(..., description="Whether request succeeded")
@@ -146,7 +146,7 @@ class TaskStep(BaseModel):
 class WorkflowInput(BaseModel):
     """
     Input for complex workflow agents (Level 4).
-    
+
     Supports Plan-Act-Critique loops with LangGraph.
     """
     objective: str = Field(..., description="High-level objective")
@@ -162,7 +162,7 @@ class WorkflowInput(BaseModel):
 class WorkflowOutput(BaseModel):
     """
     Output from complex workflow agents (Level 4).
-    
+
     Includes plan, execution results, and critiques.
     """
     objective: str = Field(..., description="Original objective")
@@ -199,7 +199,7 @@ class AgentCapabilityInfo(BaseModel):
 class CollaborationRequest(BaseModel):
     """
     Request for multi-agent collaboration (Level 5).
-    
+
     Supports A2A protocol, MCP, and cross-framework communication.
     """
     task_id: str = Field(..., description="Task identifier")
@@ -217,7 +217,7 @@ class CollaborationRequest(BaseModel):
 class CollaborationResponse(BaseModel):
     """
     Response from multi-agent collaboration (Level 5).
-    
+
     Aggregates results from multiple agents.
     """
     task_id: str = Field(..., description="Task identifier")
@@ -242,7 +242,7 @@ class CollaborationResponse(BaseModel):
 class UniversalInput(BaseModel):
     """
     Universal input schema that works across all levels.
-    
+
     Use this for maximum flexibility when you don't know
     the specific level or want to support multiple levels.
     """
@@ -256,7 +256,7 @@ class UniversalInput(BaseModel):
 class UniversalOutput(BaseModel):
     """
     Universal output schema that works across all levels.
-    
+
     Use this for maximum flexibility.
     """
     result: Dict[str, Any] = Field(..., description="Result data (flexible)")
@@ -292,4 +292,3 @@ def get_output_schema_for_level(level: int):
         5: CollaborationResponse
     }
     return schemas.get(level, UniversalOutput)
-

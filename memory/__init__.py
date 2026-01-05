@@ -15,13 +15,13 @@ Install:
 
 Usage:
     from memory import MemoryManager, MemoryAgent
-    
+
     memory = MemoryManager()
     agent = MemoryAgent(memory)
-    
+
     # Agent decides what to store
     await agent.process_and_store(interaction)
-    
+
     # Agent retrieves relevant context
     context = await agent.retrieve_context(query)
 """
@@ -104,46 +104,46 @@ __all__ = [
     "MemoryImportance",
     "MemoryEntry",
     "MemoryMetadata",
-    
+
     # Stores
     "ShortTermMemory",
     "LongTermMemory",
     "EpisodicMemory",
     "SemanticMemory",
     "ProceduralMemory",
-    
+
     # Agents
     "MemoryAgent",
     "StorageDecisionAgent",
     "RetrievalAgent",
     "ReflectionAgent",
     "ForgetAgent",
-    
+
     # Strategies
     "RetrievalStrategy",
     "SemanticRetrievalStrategy",
     "RecencyRetrievalStrategy",
     "ImportanceRetrievalStrategy",
     "HybridRetrievalStrategy",
-    
+
     # Policies
     "ForgettingPolicy",
     "TimeBasedForgetting",
     "ImportanceBasedForgetting",
     "CapacityBasedForgetting",
     "RelevanceBasedForgetting",
-    
+
     # Context
     "ContextWindowManager",
     "ContextBudget",
     "ContextPrioritization",
-    
+
     # Shared
     "SharedMemoryCoordinator",
     "PrivateMemory",
     "SharedMemory",
     "MemoryAccess",
-    
+
     # Embeddings
     "EmbeddingProvider",
     "SentenceTransformerEmbeddings",
@@ -151,11 +151,10 @@ __all__ = [
     "DatabricksEmbeddings",
     "CachedEmbeddings",
     "SemanticMemorySearch",
-    
+
     # Graphs
     "MemoryGraph",
     "MemoryRelation",
     "RelationType",
     "AutoRelationDetector",
 ]
-

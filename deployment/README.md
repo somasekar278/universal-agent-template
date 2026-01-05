@@ -73,4 +73,3 @@ This agent framework only contains the **MCP client** code (`mcp/` module).
 
 - Databricks Apps: https://docs.databricks.com/en/dev-tools/databricks-apps/
 - Deployment Guide: `../docs/PLATFORM_INTEGRATION.md#databricks-deployment`
-

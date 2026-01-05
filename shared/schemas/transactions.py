@@ -42,26 +42,26 @@ class FraudLabel(str, Enum):
 class Transaction(BaseModel):
     """
     Core transaction record.
-    
+
     Represents a payment transaction with all relevant metadata for
     fraud detection analysis.
     """
-    
+
     # Core identifiers
     transaction_id: str = Field(..., description="Unique transaction identifier")
     merchant_id: str = Field(..., description="Merchant identifier")
     customer_id: str = Field(..., description="Customer identifier")
-    
+
     # Transaction details
     timestamp: datetime = Field(..., description="Transaction timestamp (UTC)")
     amount: Decimal = Field(..., ge=0, description="Transaction amount")
     currency: str = Field(..., min_length=3, max_length=3, description="ISO 4217 currency code")
     payment_method: PaymentMethod = Field(..., description="Payment method used")
-    
+
     # Status and labeling
     status: TransactionStatus = Field(default=TransactionStatus.PENDING)
     fraud_label: FraudLabel = Field(default=FraudLabel.UNKNOWN, description="Ground truth label")
-    
+
     # Risk scoring
     ml_risk_score: Optional[float] = Field(
         default=None,
@@ -69,36 +69,36 @@ class Transaction(BaseModel):
         le=1.0,
         description="ML model risk score (0=safe, 1=fraud)"
     )
-    
+
     # Device and network
     device_fingerprint: Optional[str] = Field(default=None, description="Device fingerprint hash")
     ip_address: Optional[str] = Field(default=None, description="Client IP address")
     user_agent: Optional[str] = Field(default=None, description="Client user agent")
-    
+
     # Location
     country_code: Optional[str] = Field(default=None, min_length=2, max_length=2)
     city: Optional[str] = Field(default=None)
     latitude: Optional[float] = Field(default=None, ge=-90, le=90)
     longitude: Optional[float] = Field(default=None, ge=-180, le=180)
-    
+
     # Additional metadata
     metadata: dict = Field(
         default_factory=dict,
         description="Additional transaction metadata"
     )
-    
+
     @field_validator('currency')
     @classmethod
     def validate_currency_uppercase(cls, v: str) -> str:
         """Ensure currency code is uppercase."""
         return v.upper()
-    
+
     @field_validator('country_code')
     @classmethod
     def validate_country_uppercase(cls, v: Optional[str]) -> Optional[str]:
         """Ensure country code is uppercase."""
         return v.upper() if v else None
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -118,4 +118,3 @@ class Transaction(BaseModel):
                 "city": "London",
             }
         }
-

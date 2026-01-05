@@ -13,14 +13,14 @@ Install:
 
 Usage:
     from optimization import DSPyOptimizer, TextGradOptimizer
-    
+
     # Optimize task prompt with DSPy
     dspy_optimizer = DSPyOptimizer()
     optimized_prompt = dspy_optimizer.optimize(
         task="fraud_detection",
         training_data=examples
     )
-    
+
     # Optimize system prompt with TextGrad
     textgrad_optimizer = TextGradOptimizer()
     optimized_system = textgrad_optimizer.optimize(
@@ -58,20 +58,19 @@ __all__ = [
     "DSPyOptimizer",
     "DSPyConfig",
     "OptimizationResult",
-    
+
     # TextGrad
     "TextGradOptimizer",
     "TextGradConfig",
     "SystemPromptResult",
-    
+
     # Unified
     "PromptOptimizer",
     "OptimizationPipeline",
     "PromptCandidate",
-    
+
     # A/B Testing
     "ABTestFramework",
     "PromptVariant",
     "TestResult",
 ]
-

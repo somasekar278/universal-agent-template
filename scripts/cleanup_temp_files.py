@@ -52,7 +52,7 @@ TEMP_PATTERNS = [
 def cleanup_temp_files():
     """Remove temporary test files and directories."""
     cleaned = []
-    
+
     # Clean up directories
     for temp_dir in TEMP_DIRS:
         if os.path.exists(temp_dir):
@@ -61,7 +61,7 @@ def cleanup_temp_files():
                 cleaned.append(f"📁 {temp_dir}")
             except Exception as e:
                 print(f"⚠️  Could not remove {temp_dir}: {e}", file=sys.stderr)
-    
+
     # Clean up files
     for temp_file in TEMP_FILES:
         if os.path.exists(temp_file):
@@ -70,7 +70,7 @@ def cleanup_temp_files():
                 cleaned.append(f"📄 {temp_file}")
             except Exception as e:
                 print(f"⚠️  Could not remove {temp_file}: {e}", file=sys.stderr)
-    
+
     # Clean up pattern-matched files
     import glob
     for pattern in TEMP_PATTERNS:
@@ -87,7 +87,7 @@ def cleanup_temp_files():
                     cleaned.append(f"📁 {path}")
                 except Exception:
                     pass
-    
+
     # Report results
     if cleaned:
         print(f"🧹 Cleaned up {len(cleaned)} temporary items:")
@@ -97,7 +97,7 @@ def cleanup_temp_files():
             print(f"   ... and {len(cleaned) - 5} more")
     else:
         print("✅ No temporary files to clean up")
-    
+
     return True
 
 
@@ -108,4 +108,3 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"❌ Cleanup failed: {e}", file=sys.stderr)
         sys.exit(1)
-

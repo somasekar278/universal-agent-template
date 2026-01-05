@@ -1,7 +1,7 @@
 # ============================================================================
 # Level 1: Simple Chatbot (2-4 hours)
 # ============================================================================
-# 
+#
 # What this level includes:
 # - Single stateless agent
 # - Basic LLM integration
@@ -52,7 +52,7 @@ databricks:
   workspace:
     host: ${DATABRICKS_HOST}
     token: ${DATABRICKS_TOKEN}
-  
+
   model_serving:
     endpoint: "databricks-dbrx-instruct"
 
@@ -65,6 +65,3 @@ telemetry:
     enabled: false
   mlflow:
     enabled: false
-
-
-

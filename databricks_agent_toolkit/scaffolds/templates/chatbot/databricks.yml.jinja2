@@ -15,7 +15,6 @@ resources:
       name: {{ name }}
       description: "{{ name }} - Simple Chatbot (L1)"
       source_code_path: .
-      compute_size: MEDIUM
 
 targets:
   dev:
@@ -23,7 +22,7 @@ targets:
     default: true
     workspace:
       root_path: /Workspace/{{ '${workspace.current_user.userName}' }}/.bundle/{{ '${bundle.name}' }}/{{ '${bundle.target}' }}
-  
+
   prod:
     mode: production
     workspace:

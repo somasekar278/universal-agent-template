@@ -16,4 +16,3 @@ class AlertManager:
     """Alert manager for production monitoring"""
     def send_alert(self, alert: Alert):
         print(f"🚨 [{alert.severity.value.upper()}] {alert.message}")
-

@@ -1,4 +1,5 @@
 command: ['python', 'app.py']
+
 env:
   - name: DATABRICKS_HOST
     value: "{{ '${var.databricks_host}' }}"
@@ -15,3 +16,13 @@ env:
   - name: PGCHANNELBINDING
     value: "disable"
 
+# Databricks Apps Configuration
+#
+# Apps use serverless compute managed at the workspace level.
+# Compute size and resource tags are controlled by workspace-level
+# serverless compute policies, not in bundle configuration.
+#
+# To configure compute and tags:
+# 1. Contact your workspace admin to set up serverless compute policies
+# 2. Policies can enforce tags for cost tracking and resource attribution
+# 3. See: https://docs.databricks.com/aws/en/admin/usage/budget-policies

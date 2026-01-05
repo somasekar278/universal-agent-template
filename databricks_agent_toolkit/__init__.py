@@ -21,18 +21,18 @@ Example:
         DatabricksMCPTools,
         UnityAgentArtifacts
     )
-    
+
     # Initialize (auto-auth)
     llm = DatabricksLLM(endpoint="databricks-claude-sonnet-4-5")
     mcp = DatabricksMCPTools(servers={
         "vector_search": {"catalog": "prod", "schema": "docs"}
     })
-    
+
     # Use with LangGraph, LangChain, or custom code
     response = await llm.chat(messages=[...])
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.33"
 __author__ = "Databricks Agent Toolkit Team"
 
 # Core integrations (lazy-loaded to avoid requiring optional dependencies)
@@ -49,13 +49,13 @@ __all__ = [
 # Only import integrations if databricks-sdk is available
 try:
     from databricks_agent_toolkit.integrations import (
+        DatabricksAppDeployment,
         DatabricksLLM,
         DatabricksMCPTools,
-        UnityAgentArtifacts,
         Lakebase,
-        DatabricksAppDeployment,
-        get_workspace_client,
+        UnityAgentArtifacts,
         check_authentication,
+        get_workspace_client,
     )
 except ImportError:
     # Integrations require databricks-sdk

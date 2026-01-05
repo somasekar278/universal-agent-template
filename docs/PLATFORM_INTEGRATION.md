@@ -104,7 +104,7 @@ class ReasoningAgent(dspy.Module):
     def __init__(self):
         super().__init__()
         self.analyze = dspy.ChainOfThought(Analyze)
-    
+
     def forward(self, input):
         return self.analyze(input=input)
 
@@ -268,7 +268,7 @@ Create custom business dashboards:
 
 ```sql
 -- Agent performance over time
-SELECT 
+SELECT
     agent_name,
     DATE(timestamp) as date,
     AVG(correctness_score) as avg_correctness,
@@ -465,14 +465,14 @@ async with McpClient() as client:
         "check_performance",
         {"agent_id": "fraud_detector"}
     )
-    
+
     if perf["status"] == "degraded":
         # Trigger optimization
         result = await client.call_databricks_tool(
             "trigger_optimization",
             {"agent_id": "fraud_detector"}
         )
-    
+
     # Query MLflow traces
     traces = await client.call_mlflow_tool(
         "search_traces",
@@ -536,4 +536,3 @@ All commands still work:
 ---
 
 **Remember: We build ON TOP OF platforms, not INSTEAD OF them.**
-

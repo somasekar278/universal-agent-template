@@ -38,7 +38,7 @@ class MemoryMetadata:
     source: Optional[str] = None  # Which agent created this
     related_memories: List[str] = field(default_factory=list)
     embedding: Optional[List[float]] = None
-    
+
     def update_access(self):
         """Update access tracking."""
         self.last_accessed = datetime.now()
@@ -52,7 +52,7 @@ class MemoryEntry:
     memory_type: MemoryType = MemoryType.SHORT_TERM
     content: Any = None
     metadata: MemoryMetadata = field(default_factory=MemoryMetadata)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -74,32 +74,32 @@ class MemoryEntry:
 @dataclass
 class MemoryConfig:
     """Configuration for memory management."""
-    
+
     # Short-term memory settings
     short_term_capacity: int = 20  # Max items in short-term
     short_term_ttl_seconds: int = 3600  # 1 hour
-    
+
     # Long-term memory settings
     long_term_capacity: int = 10000  # Max items in long-term
     enable_compression: bool = True  # Compress old memories
-    
+
     # Context window settings
     max_context_tokens: int = 8000  # Max tokens for LLM context
     context_reservation: float = 0.2  # Reserve 20% for system prompts
-    
+
     # Reflection settings
     reflection_interval_hours: int = 24  # Reflect every 24 hours
     reflection_trigger_count: int = 100  # Or after 100 new memories
     enable_auto_reflection: bool = True
-    
+
     # Forgetting settings
     enable_forgetting: bool = True
     min_importance_to_keep: MemoryImportance = MemoryImportance.LOW
-    
+
     # Retrieval settings
     default_retrieval_limit: int = 10
     min_similarity_threshold: float = 0.7
-    
+
     # Shared memory settings
     enable_cross_agent_memory: bool = True
     default_memory_visibility: str = "private"  # "private" or "shared"
@@ -108,61 +108,61 @@ class MemoryConfig:
 class MemoryManager:
     """
     Central memory management system.
-    
+
     Coordinates:
     - Multiple memory stores (short-term, long-term, episodic, etc.)
     - Memory agents (storage, retrieval, reflection, forgetting)
     - Context window budgeting
     - Cross-agent memory sharing
-    
+
     Usage:
         manager = MemoryManager()
-        
+
         # Store memory
         await manager.store(
             content="User prefers dark mode",
             memory_type=MemoryType.SEMANTIC,
             importance=MemoryImportance.HIGH
         )
-        
+
         # Retrieve memories
         memories = await manager.retrieve(
             query="What are user preferences?",
             limit=5
         )
-        
+
         # Reflect and summarize
         summary = await manager.reflect()
     """
-    
+
     def __init__(self, config: Optional[MemoryConfig] = None):
         """
         Initialize memory manager.
-        
+
         Args:
             config: Memory configuration
         """
         self.config = config or MemoryConfig()
-        
+
         # Memory stores (lazy-loaded)
         self._short_term = None
         self._long_term = None
         self._episodic = None
         self._semantic = None
         self._procedural = None
-        
+
         # Memory agents (lazy-loaded)
         self._storage_agent = None
         self._retrieval_agent = None
         self._reflection_agent = None
         self._forget_agent = None
-        
+
         # Context manager
         self._context_manager = None
-        
+
         # Shared memory coordinator
         self._shared_coordinator = None
-        
+
         # Statistics
         self.stats = {
             "total_stored": 0,
@@ -170,7 +170,7 @@ class MemoryManager:
             "total_forgotten": 0,
             "reflections_count": 0
         }
-    
+
     @property
     def short_term(self):
         """Get short-term memory store."""
@@ -181,7 +181,7 @@ class MemoryManager:
                 ttl_seconds=self.config.short_term_ttl_seconds
             )
         return self._short_term
-    
+
     @property
     def long_term(self):
         """Get long-term memory store."""
@@ -191,7 +191,7 @@ class MemoryManager:
                 capacity=self.config.long_term_capacity
             )
         return self._long_term
-    
+
     @property
     def episodic(self):
         """Get episodic memory store."""
@@ -199,7 +199,7 @@ class MemoryManager:
             from .stores import EpisodicMemory
             self._episodic = EpisodicMemory()
         return self._episodic
-    
+
     @property
     def semantic(self):
         """Get semantic memory store."""
@@ -207,7 +207,7 @@ class MemoryManager:
             from .stores import SemanticMemory
             self._semantic = SemanticMemory()
         return self._semantic
-    
+
     @property
     def procedural(self):
         """Get procedural memory store."""
@@ -215,7 +215,7 @@ class MemoryManager:
             from .stores import ProceduralMemory
             self._procedural = ProceduralMemory()
         return self._procedural
-    
+
     @property
     def storage_agent(self):
         """Get storage decision agent."""
@@ -223,7 +223,7 @@ class MemoryManager:
             from .agents import StorageDecisionAgent
             self._storage_agent = StorageDecisionAgent(self)
         return self._storage_agent
-    
+
     @property
     def retrieval_agent(self):
         """Get retrieval agent."""
@@ -231,7 +231,7 @@ class MemoryManager:
             from .agents import RetrievalAgent
             self._retrieval_agent = RetrievalAgent(self)
         return self._retrieval_agent
-    
+
     @property
     def reflection_agent(self):
         """Get reflection agent."""
@@ -239,7 +239,7 @@ class MemoryManager:
             from .agents import ReflectionAgent
             self._reflection_agent = ReflectionAgent(self)
         return self._reflection_agent
-    
+
     @property
     def forget_agent(self):
         """Get forgetting agent."""
@@ -247,7 +247,7 @@ class MemoryManager:
             from .agents import ForgetAgent
             self._forget_agent = ForgetAgent(self)
         return self._forget_agent
-    
+
     @property
     def context_manager(self):
         """Get context window manager."""
@@ -258,7 +258,7 @@ class MemoryManager:
                 reservation=self.config.context_reservation
             )
         return self._context_manager
-    
+
     @property
     def shared_coordinator(self):
         """Get shared memory coordinator."""
@@ -266,7 +266,7 @@ class MemoryManager:
             from .shared import SharedMemoryCoordinator
             self._shared_coordinator = SharedMemoryCoordinator()
         return self._shared_coordinator
-    
+
     async def store(
         self,
         content: Any,
@@ -277,20 +277,20 @@ class MemoryManager:
     ) -> MemoryEntry:
         """
         Store a memory (agent-governed).
-        
+
         The storage agent decides where and how to store based on:
         - Content importance
         - Memory type
         - Current capacity
         - Existing memories
-        
+
         Args:
             content: Content to store
             memory_type: Type of memory (auto-detected if None)
             importance: Importance level (auto-assessed if None)
             source: Source agent ID
             tags: Tags for categorization
-            
+
         Returns:
             Created memory entry
         """
@@ -302,11 +302,11 @@ class MemoryManager:
             source=source,
             tags=tags
         )
-        
+
         self.stats["total_stored"] += 1
-        
+
         return memory
-    
+
     async def retrieve(
         self,
         query: Union[str, Dict[str, Any]],
@@ -316,19 +316,19 @@ class MemoryManager:
     ) -> List[MemoryEntry]:
         """
         Retrieve memories (agent-governed).
-        
+
         The retrieval agent intelligently finds relevant memories using:
         - Semantic similarity
         - Recency
         - Importance
         - Access patterns
-        
+
         Args:
             query: Search query (text or structured)
             memory_types: Filter by memory types
             limit: Max memories to return
             strategy: Retrieval strategy name
-            
+
         Returns:
             List of relevant memory entries
         """
@@ -338,56 +338,56 @@ class MemoryManager:
             limit=limit or self.config.default_retrieval_limit,
             strategy=strategy
         )
-        
+
         self.stats["total_retrieved"] += len(memories)
-        
+
         return memories
-    
+
     async def reflect(self) -> Dict[str, Any]:
         """
         Perform reflection on memories.
-        
+
         The reflection agent:
         - Analyzes recent memories
         - Identifies patterns
         - Creates summaries
         - Consolidates related memories
         - Promotes important insights to semantic memory
-        
+
         Returns:
             Reflection summary
         """
         summary = await self.reflection_agent.reflect()
-        
+
         self.stats["reflections_count"] += 1
-        
+
         return summary
-    
+
     async def forget(self, criteria: Optional[Dict[str, Any]] = None) -> int:
         """
         Apply forgetting policies.
-        
+
         The forget agent decides what to remove based on:
         - Time since last access
         - Importance
         - Capacity constraints
         - Relevance to current goals
-        
+
         Args:
             criteria: Optional specific forgetting criteria
-            
+
         Returns:
             Number of memories forgotten
         """
         if not self.config.enable_forgetting:
             return 0
-        
+
         count = await self.forget_agent.apply_forgetting(criteria)
-        
+
         self.stats["total_forgotten"] += count
-        
+
         return count
-    
+
     async def build_context(
         self,
         query: str,
@@ -395,11 +395,11 @@ class MemoryManager:
     ) -> Dict[str, Any]:
         """
         Build context for LLM with budget management.
-        
+
         Args:
             query: Current query
             include_system: System prompt to include
-            
+
         Returns:
             Context dict with messages and token counts
         """
@@ -408,7 +408,7 @@ class MemoryManager:
             memory_manager=self,
             system_prompt=include_system
         )
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get memory statistics."""
         return {
@@ -421,11 +421,11 @@ class MemoryManager:
                 "max_context_tokens": self.config.max_context_tokens
             }
         }
-    
+
     async def clear(self, memory_types: Optional[List[MemoryType]] = None):
         """
         Clear memories.
-        
+
         Args:
             memory_types: Specific types to clear (all if None)
         """
@@ -439,4 +439,3 @@ class MemoryManager:
             await self.semantic.clear()
         if memory_types is None or MemoryType.PROCEDURAL in memory_types:
             await self.procedural.clear()
-

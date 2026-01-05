@@ -19,4 +19,3 @@ def record_tokens(operation: str, tokens: int):
 class MetricsRecorder:
     """Metrics recorder."""
     pass
-

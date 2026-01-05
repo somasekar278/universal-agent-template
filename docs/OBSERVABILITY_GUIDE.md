@@ -50,10 +50,10 @@ import mlflow
 
 with mlflow.start_span(name="fraud_detection") as span:
     span.set_inputs({"transaction_id": "TX123"})
-    
+
     # Your agent logic
     result = fraud_detector.process(transaction)
-    
+
     span.set_outputs({"risk_score": result.risk_score})
     span.set_attribute("model", "databricks-dbrx-instruct")
 ```
@@ -124,7 +124,7 @@ Edit `config/agent_config.yaml`:
 telemetry:
   enabled: true
   service_name: agent-framework
-  
+
   otel:
     traces:
       enabled: true
@@ -134,7 +134,7 @@ telemetry:
     metrics:
       enabled: true
       export_interval_seconds: 60
-  
+
   zerobus:
     enabled: true
     uc_endpoint: "${DATABRICKS_HOST}"
@@ -144,7 +144,7 @@ telemetry:
     batch_size: 1000
     batch_interval_seconds: 10
     max_retries: 3
-    
+
     track:
       requests: true
       responses: true
@@ -194,7 +194,7 @@ client.log_event(
 
 ```sql
 -- In Databricks SQL
-SELECT 
+SELECT
     agent_id,
     DATE(timestamp) as date,
     AVG(latency_ms) as avg_latency,
@@ -226,21 +226,21 @@ self_improvement_service:
   enabled: true
   check_interval_seconds: 300  # Check every 5 minutes
   max_concurrent_optimizations: 2
-  
+
   agents:
     fraud_detector:
       enabled: true
       priority: "critical"
-      
+
       # Performance thresholds
       thresholds:
         accuracy: 0.90        # Trigger if < 90%
         error_rate: 0.03      # Trigger if > 3%
         latency: 1.0          # Trigger if > 1s
-        
+
       # Cooldown to prevent over-optimization
       cooldown_hours: 24
-      
+
       # Notifications
       notifications:
         on_degradation:
@@ -249,7 +249,7 @@ self_improvement_service:
         on_optimization_complete:
           - type: "slack"
             channel: "#fraud-ops"
-      
+
       # Optimization settings
       optimization:
         config_path: "config/optimization/fraud_detector_optimize.yaml"
@@ -269,17 +269,17 @@ async with McpClient() as client:
         "check_performance",
         {"agent_id": "fraud_detector"}
     )
-    
+
     print(f"Status: {perf['status']}")
     for metric in perf['metric_results']:
         print(f"{metric['metric_name']}: {metric['value']} (threshold: {metric['threshold']})")
-    
+
     # Analyze trend
     trend = await client.call_databricks_tool(
         "analyze_performance_trend",
         {"agent_id": "fraud_detector", "time_period_days": 7}
     )
-    
+
     print(f"Trend: {trend['trend_analysis']}")
 ```
 
@@ -345,16 +345,16 @@ from mcp import McpClient
 async def lifespan(app: FastAPI):
     # Initialize MCP client
     mcp_client = McpClient()
-    
+
     # Initialize self-improvement service
     config = SelfImprovementServiceConfig.load("config/agent_config.yaml")
     service = SelfImprovementService(config, mcp_client)
-    
+
     # Start background monitoring
     service_task = asyncio.create_task(service.start())
-    
+
     yield
-    
+
     # Cleanup
     await service.stop()
     await mcp_client.close()
@@ -390,7 +390,7 @@ Create custom business dashboards in Databricks SQL.
 
 **Agent Performance Overview:**
 ```sql
-SELECT 
+SELECT
     agent_id,
     DATE(timestamp) as date,
     AVG(correctness_score) as avg_correctness,
@@ -406,7 +406,7 @@ ORDER BY date DESC, agent_id
 
 **Real-Time Metrics (Last Hour):**
 ```sql
-SELECT 
+SELECT
     agent_id,
     COUNT(*) as requests_last_hour,
     AVG(latency_ms) as avg_latency,
@@ -420,11 +420,11 @@ GROUP BY agent_id
 
 **Optimization History:**
 ```sql
-SELECT 
+SELECT
     agent_id,
     optimization_id,
     timestamp,
-    CASE 
+    CASE
         WHEN status = 'completed' THEN 'Success'
         WHEN status = 'failed' THEN 'Failed'
         ELSE 'In Progress'
@@ -498,7 +498,7 @@ Create alerts in Databricks SQL:
 
 **Example Alert Query:**
 ```sql
-SELECT 
+SELECT
     agent_id,
     CAST(SUM(CASE WHEN error IS NOT NULL THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as error_rate
 FROM main.agents.telemetry
@@ -571,4 +571,3 @@ agent-telemetry status
 ---
 
 **Remember: Use native Databricks observability, don't build custom dashboards.**
-

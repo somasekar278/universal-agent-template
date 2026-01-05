@@ -13,26 +13,26 @@ from pydantic import BaseModel, Field
 class Embedding(BaseModel):
     """
     Vector embedding representation.
-    
+
     Used for semantic search, similarity matching, and RAG in Lakebase.
     """
-    
+
     vector: List[float] = Field(
         ...,
         description="Embedding vector (typically 768 or 1536 dimensions)"
     )
-    
+
     model_name: str = Field(
         default="text-embedding-ada-002",
         description="Embedding model used"
     )
-    
+
     dimension: int = Field(..., ge=1, description="Vector dimension")
-    
+
     def __len__(self) -> int:
         """Return embedding dimension."""
         return len(self.vector)
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -46,28 +46,28 @@ class Embedding(BaseModel):
 class ConversationMessage(BaseModel):
     """
     Individual message in agent conversation history.
-    
+
     Stored in Lakebase with embeddings for semantic retrieval.
     """
-    
+
     message_id: str = Field(..., description="Unique message ID")
     timestamp: datetime = Field(..., description="Message timestamp")
-    
+
     role: str = Field(..., description="system, agent, tool, user")
     content: str = Field(..., description="Message content")
-    
+
     embedding: Optional[Embedding] = Field(
         default=None,
         description="Semantic embedding of message content"
     )
-    
+
     # Context
     transaction_id: Optional[str] = Field(default=None)
     tool_call_id: Optional[str] = Field(
         default=None,
         description="If this is a tool result message"
     )
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -87,27 +87,27 @@ class ConversationMessage(BaseModel):
 class ConversationHistory(BaseModel):
     """
     Complete conversation history for an agent execution.
-    
+
     Stored in Lakebase for conversation memory and retrieval.
     """
-    
+
     agent_id: str = Field(..., description="Agent identifier")
     transaction_id: str = Field(..., description="Associated transaction")
-    
+
     messages: List[ConversationMessage] = Field(
         default_factory=list,
         description="Ordered list of conversation messages"
     )
-    
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Summary embedding for entire conversation
     conversation_embedding: Optional[Embedding] = Field(
         default=None,
         description="Embedding of entire conversation for similarity search"
     )
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -128,26 +128,26 @@ class ConversationHistory(BaseModel):
 class MerchantContextWithEmbedding(BaseModel):
     """
     Merchant context enriched with embedding for similarity search.
-    
+
     Extends base merchant context with vector representation.
     """
-    
+
     merchant_id: str = Field(...)
     merchant_risk_tier: str = Field(...)
-    
+
     weekly_velocity: int = Field(default=0, ge=0)
     usual_top_countries: List[str] = Field(default_factory=list)
     recent_chargebacks_7d: int = Field(default=0, ge=0)
-    
+
     avg_txn_amount_30d: Optional[float] = Field(default=None, ge=0)
     chargeback_rate_90d: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    
+
     # Embedding for merchant profile
     embedding: Optional[Embedding] = Field(
         default=None,
         description="Embedding of merchant profile for similarity search"
     )
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -170,23 +170,23 @@ class CustomerContextWithEmbedding(BaseModel):
     """
     Customer context enriched with embedding for similarity search.
     """
-    
+
     customer_id: str = Field(...)
     account_age_days: int = Field(..., ge=0)
-    
+
     prior_disputes: int = Field(default=0, ge=0)
     email_verified: bool = Field(default=False)
     phone_verified: bool = Field(default=False)
-    
+
     typical_transaction_amount: Optional[float] = Field(default=None, ge=0)
     transaction_count_30d: int = Field(default=0, ge=0)
-    
+
     # Embedding for customer behavior profile
     embedding: Optional[Embedding] = Field(
         default=None,
         description="Embedding of customer behavior for similarity search"
     )
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -206,31 +206,31 @@ class CustomerContextWithEmbedding(BaseModel):
 class SimilarCaseResult(BaseModel):
     """
     Similar fraud case retrieved from Lakebase via vector similarity.
-    
+
     Used for few-shot learning and context augmentation.
     """
-    
+
     case_id: str = Field(..., description="Historical case ID")
     transaction_id: str = Field(..., description="Historical transaction ID")
-    
+
     similarity_score: float = Field(
         ...,
         ge=0.0,
         le=1.0,
         description="Cosine similarity to current case"
     )
-    
+
     # Historical case details
     fraud_label: str = Field(..., description="Ground truth label")
     agent_decision: str = Field(..., description="Agent's decision")
     was_correct: bool = Field(..., description="Whether agent was correct")
-    
+
     # Case summary
     case_summary: str = Field(..., description="Brief case description")
     risk_factors: List[str] = Field(default_factory=list)
-    
+
     embedding: Embedding = Field(..., description="Case embedding")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -244,4 +244,3 @@ class SimilarCaseResult(BaseModel):
                 "risk_factors": ["BIN_MISMATCH", "VELOCITY_ANOMALY"],
             }
         }
-

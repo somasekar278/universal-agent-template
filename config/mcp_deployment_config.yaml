@@ -14,7 +14,7 @@ deployment_mode: embedded  # Options: "embedded", "separate", "external"
 
 embedded:
   enabled: true
-  
+
   mlflow_mcp:
     enabled: true
     port: 5000
@@ -25,7 +25,7 @@ embedded:
     env:
       MLFLOW_TRACKING_URI: "databricks"
       # DATABRICKS_HOST and DATABRICKS_TOKEN inherited from parent process
-  
+
   databricks_mcp:
     enabled: true
     port: 6000
@@ -34,7 +34,7 @@ embedded:
     healthcheck_endpoint: "http://localhost:6000/health"
     command: ["python", "-m", "databricks_mcp.server", "--host", "0.0.0.0", "--port", "6000"]
     # DATABRICKS_HOST, DATABRICKS_TOKEN, AGENT_FRAMEWORK_PATH inherited
-  
+
   resource_limits:
     max_cpu_percent: 80  # Alert if CPU > 80%
     max_memory_percent: 85  # Alert if Memory > 85%
@@ -49,13 +49,13 @@ embedded:
 
 separate:
   enabled: false
-  
+
   mlflow_mcp:
     endpoint: "http://mcp-servers:5000"  # Internal DNS name or IP
     timeout_seconds: 30
     retry_attempts: 3
     healthcheck_enabled: true
-  
+
   databricks_mcp:
     endpoint: "http://mcp-servers:6000"  # Internal DNS name or IP
     timeout_seconds: 30
@@ -76,7 +76,7 @@ separate:
 
 external:
   enabled: false
-  
+
   # Native MLflow MCP (built into Databricks MLflow 3.5.1+)
   mlflow_mcp:
     endpoint: "${MLFLOW_MCP_ENDPOINT}"  # e.g., "https://your-workspace.cloud.databricks.com/mlflow/mcp"
@@ -86,7 +86,7 @@ external:
     auth:
       type: "bearer_token"  # Options: "none", "bearer_token", "api_key"
       token: "${DATABRICKS_TOKEN}"  # Use Databricks token
-  
+
   # Your custom Databricks Agent MCP (if deployed separately)
   databricks_mcp:
     endpoint: "${DATABRICKS_MCP_ENDPOINT}"  # e.g., "https://mcp.yourcompany.com/agent-tools"
@@ -96,13 +96,13 @@ external:
     auth:
       type: "bearer_token"
       token: "${DATABRICKS_MCP_AUTH_TOKEN}"
-  
+
   # =========================================================================
   # DATABRICKS MANAGED MCP SERVERS (Native)
   # =========================================================================
   # Databricks provides 4 ready-to-use managed MCP servers (Beta)
   # See: https://docs.databricks.com/aws/en/generative-ai/mcp/managed-mcp
-  
+
   # 1. Unity Catalog Functions MCP
   #    Run predefined SQL queries via UC functions
   # uc_functions_mcp:
@@ -117,7 +117,7 @@ external:
   #     # - "https://your-workspace.cloud.databricks.com/api/2.0/mcp/functions/prod/billing"
   #     # Example: Access customer support functions
   #     # - "https://your-workspace.cloud.databricks.com/api/2.0/mcp/functions/prod/customer_support"
-  
+
   # 2. Vector Search MCP
   #    Query Vector Search indexes (only indexes with Databricks managed embeddings)
   # vector_search_mcp:
@@ -132,7 +132,7 @@ external:
   #     # - "https://your-workspace.cloud.databricks.com/api/2.0/mcp/vector-search/prod/customer_support"
   #     # Example: Search product documentation
   #     # - "https://your-workspace.cloud.databricks.com/api/2.0/mcp/vector-search/prod/product_docs"
-  
+
   # 3. Genie Space MCP
   #    Query Genie spaces to analyze structured data using natural language
   #    Note: For external assistants (Claude, ChatGPT) for read-only ops
@@ -146,7 +146,7 @@ external:
   #   examples:
   #     # Example: Query billing data
   #     # - "https://your-workspace.cloud.databricks.com/api/2.0/mcp/genie/01234567-89ab-cdef-0123-456789abcdef"
-  
+
   # 4. DBSQL MCP
   #    Run AI-generated SQL (for AI coding tools like Cursor, Claude Code)
   #    Note: For read-only data retrieval, use Genie instead
@@ -160,12 +160,12 @@ external:
   #   examples:
   #     # Used for authoring data pipelines with AI coding assistants
   #     # - "https://your-workspace.cloud.databricks.com/api/2.0/mcp/sql"
-  
+
   # =========================================================================
   # EXAMPLE: Multi-MCP Customer Support Agent
   # =========================================================================
   # Real-world scenario: Customer support agent with multiple MCP servers
-  # 
+  #
   # customer_support_agent:
   #   vector_search: "https://<host>/api/2.0/mcp/vector-search/prod/customer_support"
   #   genie_billing: "https://<host>/api/2.0/mcp/genie/{billing_space_id}"
@@ -175,11 +175,11 @@ external:
   #   - Unstructured data (support tickets via Vector Search)
   #   - Structured data (billing tables via Genie)
   #   - Custom business logic (account lookups via UC Functions)
-  
+
   # =========================================================================
   # PUBLIC/THIRD-PARTY MCP SERVERS
   # =========================================================================
-  
+
   # GitHub MCP (if available as managed service)
   # github_mcp:
   #   endpoint: "https://api.github.com/mcp"
@@ -187,7 +187,7 @@ external:
   #   auth:
   #     type: "bearer_token"
   #     token: "${GITHUB_TOKEN}"
-  
+
   # Slack MCP (if available as managed service)
   # slack_mcp:
   #   endpoint: "https://mcp.slack.com/v1"
@@ -195,7 +195,7 @@ external:
   #   auth:
   #     type: "bearer_token"
   #     token: "${SLACK_MCP_TOKEN}"
-  
+
   # Custom Enterprise MCP Server
   # enterprise_tools_mcp:
   #   endpoint: "https://mcp.enterprise.com/tools"
@@ -213,7 +213,7 @@ connection:
   max_connections: 100
   connection_timeout_seconds: 10
   read_timeout_seconds: 30
-  
+
   # Connection pooling
   pool_size: 10
   pool_max_overflow: 20
@@ -225,16 +225,16 @@ monitoring:
     - mcp_request_duration_seconds
     - mcp_error_count
     - mcp_connection_errors
-  
+
   health_check_interval_seconds: 60
-  
+
   # Alert when MCP servers are unhealthy
   alerts:
     - name: mcp_server_down
       condition: "health_check_failed"
       severity: critical
       action: "restart_or_notify"
-    
+
     - name: high_latency
       condition: "p95_latency > 5s"
       severity: warning
@@ -247,14 +247,14 @@ monitoring:
 resilience:
   # If MCP servers are unavailable, should agents fail or continue?
   fallback_mode: "continue_without_mcp"  # Options: "fail", "continue_without_mcp"
-  
+
   # Circuit breaker
   circuit_breaker:
     enabled: true
     failure_threshold: 5  # Open circuit after 5 failures
     timeout_seconds: 60  # Try again after 60s
     success_threshold: 2  # Close circuit after 2 successes
-  
+
   # Retry policy
   retry:
     enabled: true
@@ -285,4 +285,3 @@ testing:
       endpoint: "http://localhost:5000"
     databricks_mcp:
       endpoint: "http://localhost:6000"
-

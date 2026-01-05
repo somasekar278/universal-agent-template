@@ -5,4 +5,3 @@ Command-line tools for the toolkit.
 """
 
 __all__ = ["main"]
-

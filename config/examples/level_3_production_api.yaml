@@ -1,7 +1,7 @@
 # ============================================================================
 # Level 3: Production-Ready API (8-16 hours)
 # ============================================================================
-# 
+#
 # What this level adds:
 # - ✅ RESTful API endpoints
 # - ✅ Async execution
@@ -30,19 +30,19 @@ agents:
     system_prompt: "You are a production API agent. Provide accurate, concise responses."
     max_tokens: 2000
     temperature: 0.5  # Lower for consistency
-    
+
     # Execution configuration
     execution:
       mode: "async"  # Non-blocking
       timeout: 30
       max_retries: 3
       retry_delay: 1
-    
+
     # Rate limiting
     rate_limit:
       requests_per_minute: 60
       burst_size: 10
-    
+
     # Memory configuration
     memory:
       enabled: true
@@ -56,12 +56,12 @@ agents:
 
 memory:
   enabled: true
-  
+
   storage:
     type: "delta"
     table: "main.agents.memory"
     partitioned_by: ["date", "agent_id"]
-  
+
   retrieval:
     strategy: "semantic"  # Semantic search
     max_items: 5
@@ -75,10 +75,10 @@ memory:
 #
 # mcp:
 #   deployment_mode: "external"
-#   
+#
 #   external:
 #     enabled: true
-#     
+#
 #     # Vector Search: Search document embeddings
 #     vector_search_docs:
 #       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/vector-search/prod/documents"
@@ -87,7 +87,7 @@ memory:
 #       auth:
 #         type: "bearer_token"
 #         token: "${DATABRICKS_TOKEN}"
-#     
+#
 #     # Optional: UC Functions for custom business logic
 #     # uc_functions_utils:
 #     #   endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/functions/prod/utils"
@@ -104,7 +104,7 @@ monitoring:
   deployment_mode: "embedded"
   enabled: true
   check_interval_seconds: 600  # Check every 10 minutes
-  
+
   agents:
     api_agent:
       enabled: true
@@ -113,7 +113,7 @@ monitoring:
         error_rate: 0.05  # 5% max errors
         latency: 5.0      # 5s max response time
       cooldown_hours: 24
-  
+
   notification_channels:
     slack:
       enabled: true
@@ -135,23 +135,23 @@ databricks:
   workspace:
     host: ${DATABRICKS_HOST}
     token: ${DATABRICKS_TOKEN}
-  
+
   unity_catalog:
     enabled: true
     catalog_name: agents
     schema_name: production
-    
+
     tables:
       memory:
         name: memory
         type: MANAGED
         partitioned_by: ["date", "agent_id"]
-      
+
       telemetry:
         name: telemetry
         type: MANAGED
         partitioned_by: ["date"]
-  
+
   model_serving:
     endpoint: "databricks-dbrx-instruct"
     always_on: true
@@ -169,7 +169,7 @@ telemetry:
     delta_table: "main.agents.telemetry"
     batch_interval_seconds: 10
     batch_size: 1000
-  
+
   mlflow:
     enabled: true
     tracking_uri: "databricks"
@@ -190,18 +190,15 @@ api:
   host: "0.0.0.0"
   port: 8080
   workers: 4
-  
+
   cors:
     enabled: true
     origins: ["*"]
-  
+
   rate_limiting:
     enabled: true
     default_limit: "100/minute"
-  
+
   health_check:
     enabled: true
     endpoint: "/health"
-
-
-

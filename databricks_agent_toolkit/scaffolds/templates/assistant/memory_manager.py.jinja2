@@ -19,14 +19,14 @@ except ImportError:
 class MemoryManager:
     """
     Manages conversation memory using Lakebase (PostgreSQL).
-    
+
     Features:
     - Persistent conversation history
     - Session-based memory
     - Automatic table creation
     - Context window management
     """
-    
+
     def __init__(
         self,
         host: Optional[str] = None,
@@ -37,7 +37,7 @@ class MemoryManager:
     ):
         """
         Initialize memory manager.
-        
+
         Args:
             host: Lakebase host (or LAKEBASE_HOST env var)
             database: Database name (or LAKEBASE_DATABASE env var)
@@ -50,7 +50,7 @@ class MemoryManager:
                 "Lakebase integration required for assistant. "
                 "Install with: pip install databricks-agent-toolkit[databricks]"
             )
-        
+
         self.lakebase = Lakebase(
             host=host,
             database=database,
@@ -59,12 +59,12 @@ class MemoryManager:
         )
         self.max_history = max_history
         self._initialized = False
-    
+
     def initialize(self):
         """Initialize database table (run once)."""
         if self._initialized:
             return
-        
+
         try:
             self.lakebase.create_conversations_table()
             self._initialized = True
@@ -72,7 +72,7 @@ class MemoryManager:
         except Exception as e:
             print(f"⚠️  Could not initialize memory: {e}")
             print("   Conversation history will not be saved")
-    
+
     def store_message(
         self,
         session_id: str,
@@ -82,7 +82,7 @@ class MemoryManager:
     ):
         """
         Store a message in conversation history.
-        
+
         Args:
             session_id: Unique session identifier
             role: "user" or "assistant"
@@ -98,7 +98,7 @@ class MemoryManager:
             )
         except Exception as e:
             print(f"⚠️  Could not store message: {e}")
-    
+
     def get_conversation_history(
         self,
         session_id: str,
@@ -106,11 +106,11 @@ class MemoryManager:
     ) -> List[Dict[str, Any]]:
         """
         Retrieve conversation history for a session.
-        
+
         Args:
             session_id: Session identifier
             limit: Max messages to return (defaults to max_history)
-        
+
         Returns:
             List of messages in chronological order
         """
@@ -123,14 +123,14 @@ class MemoryManager:
         except Exception as e:
             print(f"⚠️  Could not retrieve history: {e}")
             return []
-    
+
     def get_messages_for_llm(self, session_id: str) -> List[Dict[str, str]]:
         """
         Get conversation history formatted for LLM chat API.
-        
+
         Args:
             session_id: Session identifier
-        
+
         Returns:
             List of messages in format: [{"role": "user", "content": "..."}]
         """
@@ -139,11 +139,11 @@ class MemoryManager:
             {"role": msg["role"], "content": msg["content"]}
             for msg in history
         ]
-    
+
     def clear_conversation(self, session_id: str):
         """
         Clear all messages for a session.
-        
+
         Args:
             session_id: Session identifier
         """
@@ -152,14 +152,14 @@ class MemoryManager:
             print(f"✅ Cleared conversation: {session_id}")
         except Exception as e:
             print(f"⚠️  Could not clear conversation: {e}")
-    
+
     def get_session_summary(self, session_id: str) -> Dict[str, Any]:
         """
         Get summary statistics for a session.
-        
+
         Args:
             session_id: Session identifier
-        
+
         Returns:
             Dictionary with message count, first/last message times
         """
@@ -171,7 +171,7 @@ class MemoryManager:
                     "first_message": None,
                     "last_message": None
                 }
-            
+
             return {
                 "message_count": len(history),
                 "first_message": history[0]["timestamp"],
@@ -180,7 +180,7 @@ class MemoryManager:
         except Exception as e:
             print(f"⚠️  Could not get session summary: {e}")
             return {"message_count": 0, "first_message": None, "last_message": None}
-    
+
     def close(self):
         """Close database connection."""
         if hasattr(self, 'lakebase'):

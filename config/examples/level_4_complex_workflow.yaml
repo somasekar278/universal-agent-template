@@ -1,7 +1,7 @@
 # ============================================================================
 # Level 4: Complex Workflow (16-32 hours)
 # ============================================================================
-# 
+#
 # What this level adds:
 # - ✅ Plan → Act → Critique → Re-plan loops
 # - ✅ Multi-step reasoning
@@ -30,32 +30,32 @@ agents:
     system_prompt: "You are an intelligent agent that plans, acts, critiques, and improves iteratively."
     max_tokens: 4000
     temperature: 0.3  # Lower for consistency in reasoning
-    
+
     # Execution configuration
     execution:
       mode: "async"
       timeout: 120  # Longer for multi-step
       max_retries: 3
-    
+
     # Reasoning configuration
     reasoning:
       enabled: true
       mode: "chain_of_thought"
       max_iterations: 5
       critique_threshold: 0.8  # Re-plan if quality < 80%
-    
+
     # Memory configuration
     memory:
       enabled: true
       type: "persistent"
       backend: "delta"
       retention_days: 90
-      
+
       # Advanced memory features
       reflection:
         enabled: true
         interval_hours: 24
-      
+
       semantic_search:
         enabled: true
         embedding_model: "bge-large-en-v1.5"
@@ -67,7 +67,7 @@ agents:
 orchestration:
   langgraph:
     enabled: true
-    
+
     workflow:
       # Plan → Act → Critique → Re-plan
       nodes:
@@ -75,25 +75,25 @@ orchestration:
           agent: "workflow_agent"
           role: "Planning"
           output: "execution_plan"
-        
+
         - name: "executor"
           agent: "workflow_agent"
           role: "Execution"
           input: "execution_plan"
           output: "execution_result"
-        
+
         - name: "critic"
           agent: "workflow_agent"
           role: "Evaluation"
           input: "execution_result"
           output: "critique"
-        
+
         - name: "refiner"
           agent: "workflow_agent"
           role: "Improvement"
           input: "critique"
           output: "refined_plan"
-      
+
       # Flow control
       max_iterations: 5
       success_threshold: 0.9
@@ -105,17 +105,17 @@ orchestration:
 
 memory:
   enabled: true
-  
+
   storage:
     type: "delta"
     table: "main.agents.memory"
     partitioned_by: ["date", "agent_id"]
-  
+
   retrieval:
     strategy: "hybrid"  # Semantic + recency
     max_items: 10
     similarity_threshold: 0.75
-  
+
   reflection:
     enabled: true
     schedule: "daily"
@@ -129,10 +129,10 @@ memory:
 #
 mcp:
   deployment_mode: "external"
-  
+
   external:
     enabled: true
-    
+
     # Vector Search: Research papers & technical docs
     vector_search_research:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/vector-search/research/papers"
@@ -141,7 +141,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # Vector Search: Technical documentation
     vector_search_docs:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/vector-search/research/documentation"
@@ -150,7 +150,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # Genie: Query structured datasets
     genie_research_data:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/genie/${RESEARCH_GENIE_SPACE_ID}"
@@ -159,7 +159,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # UC Functions: Custom research utilities
     uc_functions_research:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/functions/research/utils"
@@ -167,17 +167,17 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-  
+
   # Connection pooling
   connection:
     max_connections: 50
     connection_timeout_seconds: 10
-  
+
   # Health checks
   monitoring:
     enabled: true
     health_check_interval_seconds: 60
-  
+
   # Resilience
   resilience:
     fallback_mode: "continue_without_mcp"
@@ -194,20 +194,20 @@ monitoring:
   deployment_mode: "embedded"
   enabled: true
   check_interval_seconds: 300  # Check every 5 minutes
-  
+
   agents:
     workflow_agent:
       enabled: true
       priority: "high"
-      
+
       thresholds:
         accuracy: 0.85
         error_rate: 0.03
         latency: 30.0  # 30s for complex workflows
         plan_success_rate: 0.80  # Custom metric
-      
+
       cooldown_hours: 12  # Can optimize twice daily
-      
+
       notifications:
         on_degradation:
           - type: "slack"
@@ -215,7 +215,7 @@ monitoring:
         on_optimization_complete:
           - type: "slack"
             channel: "#workflow-ops"
-  
+
   notification_channels:
     slack:
       enabled: true
@@ -227,30 +227,30 @@ monitoring:
 
 optimization:
   enabled: true
-  
+
   training_data:
     delta_table: "main.agents.workflow_training"
     holdout_table: "main.agents.workflow_holdout"
     input_column: "input"
     output_column: "expected_output"
-  
+
   dspy:
     enabled: true
     method: "MIPRO"
     num_candidates: 10
     num_trials: 50
     model_endpoint: "databricks-dbrx-instruct"
-  
+
   textgrad:
     enabled: true
     learning_rate: 0.1
     num_iterations: 20
     batch_size: 10
-  
+
   output:
     uc_volume: "/Volumes/main/agents/prompts"
     mlflow_experiment: "/agents/workflow_optimization"
-  
+
   ab_testing:
     enabled: true
     traffic_split: 0.1
@@ -263,41 +263,41 @@ databricks:
   workspace:
     host: ${DATABRICKS_HOST}
     token: ${DATABRICKS_TOKEN}
-  
+
   unity_catalog:
     enabled: true
     catalog_name: agents
     schema_name: production
-    
+
     volumes:
       prompts:
         name: prompts
         type: MANAGED
-      
+
       trajectories:
         name: trajectories
         type: MANAGED
-    
+
     tables:
       memory:
         name: memory
         type: MANAGED
         partitioned_by: ["date", "agent_id"]
-      
+
       telemetry:
         name: telemetry
         type: MANAGED
         partitioned_by: ["date"]
-      
+
       training_data:
         name: workflow_training
         type: MANAGED
-      
+
       trajectories:
         name: agent_trajectories
         type: MANAGED
         partitioned_by: ["date", "agent_id"]
-  
+
   model_serving:
     endpoint: "databricks-dbrx-instruct"
     always_on: true
@@ -314,7 +314,7 @@ telemetry:
     export_to_delta: true
     delta_table: "main.agents.telemetry"
     batch_interval_seconds: 10
-  
+
   mlflow:
     enabled: true
     tracking_uri: "databricks"
@@ -339,15 +339,12 @@ reasoning:
     enabled: true
     method: "textgrad"
     save_to_delta: true
-  
+
   cot_distillation:
     enabled: true
     teacher_model: "gpt-4"
     student_model: "databricks-dbrx-instruct"
-  
+
   feedback_loop:
     enabled: true
     collect_human_feedback: true
-
-
-

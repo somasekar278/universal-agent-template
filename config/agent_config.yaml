@@ -3,7 +3,7 @@
 # ============================================================================
 # File: agent_config.yaml
 # Single YAML file for all agent infrastructure and runtime settings
-# 
+#
 # Sections:
 #   1. Environment & Agents
 #   2. On-Demand Monitoring (Supervisory or Self-Monitoring)
@@ -27,7 +27,7 @@ agents:
     model_endpoint: "databricks-dbrx-instruct"
     prompt_version: "v1"
     system_prompt_version: "v1"
-    
+
   customer_support:
     enabled: true
     model_endpoint: "databricks-dbrx-instruct"
@@ -43,32 +43,32 @@ monitoring:
   deployment_mode: "embedded"  # embedded | standalone | disabled
   enabled: true
   check_interval_seconds: 300  # Check every 5 minutes
-  
+
   # MLflow Configuration
   mlflow:
     tracking_uri: "databricks"
     experiment_prefix: "/agents"  # Experiments at /agents/{agent_id}
-  
+
   # MCP Optimization Server
   mcp_server:
     endpoint: "http://localhost:8080"
     timeout_seconds: 300
-  
+
   # Agents to Monitor
   agents:
     fraud_detector:
       enabled: true
       priority: "critical"  # critical, high, medium, low
-      
+
       # Performance thresholds (trigger optimization when breached)
       thresholds:
         accuracy: 0.90        # Trigger if accuracy < 90%
         error_rate: 0.03      # Trigger if error_rate > 3%
         latency: 1.0          # Trigger if latency > 1.0s
-      
+
       # Cooldown (prevent over-optimization)
       cooldown_hours: 24      # Don't optimize within 24 hours
-      
+
       # Notifications
       notifications:
         on_degradation:
@@ -79,13 +79,13 @@ monitoring:
         on_optimization_complete:
           - type: "slack"
             channel: "#fraud-ops"
-      
+
       # Agent-specific optimization config
       optimization:
         config_path: "config/agent_config.yaml"
         dspy_only: false
         textgrad_only: false
-    
+
     customer_support:
       enabled: true
       priority: "medium"
@@ -99,7 +99,7 @@ monitoring:
         on_degradation:
           - type: "slack"
             channel: "#support-ops"
-  
+
   # Global defaults (if agent-specific not provided)
   defaults:
     thresholds:
@@ -108,14 +108,14 @@ monitoring:
       latency: 2.0
     cooldown_hours: 24
     priority: "medium"
-  
+
   # Notification Channels
   notification_channels:
     slack:
       enabled: true
       webhook_url: "${SLACK_WEBHOOK_URL}"
       default_channel: "#agent-monitoring"
-    
+
     email:
       enabled: true
       smtp_server: "smtp.company.com"
@@ -123,30 +123,30 @@ monitoring:
       smtp_username: "${SMTP_USERNAME}"
       smtp_password: "${SMTP_PASSWORD}"
       from_address: "agent-monitor@company.com"
-    
+
     pagerduty:
       enabled: false
       api_key: "${PAGERDUTY_API_KEY}"
-  
+
   # Advanced Settings
   advanced:
     batch_optimizations: true  # Optimize one at a time
     max_concurrent_optimizations: 1
     optimization_retry_count: 2
     optimization_retry_delay_seconds: 60
-    
+
     # Health check
     health_check:
       enabled: true
       port: 8081
       endpoint: "/health"
-    
+
     # Metrics storage
     metrics:
       store_to_delta: true
       delta_table: "main.monitoring.optimization_events"
       retention_days: 90
-  
+
   # Standalone Mode Configuration (only used if deployment_mode: "standalone")
   standalone:
     resources:
@@ -154,23 +154,23 @@ monitoring:
       memory: "1Gi"
       max_cpu: "1"
       max_memory: "2Gi"
-    
+
     scaling:
       min_replicas: 1
       max_replicas: 1
-    
+
     # Multi-workspace monitoring (for standalone only)
     workspaces:
       - name: "production"
         databricks_host: "${PROD_DATABRICKS_HOST}"
         databricks_token: "${PROD_DATABRICKS_TOKEN}"
         agents: ["fraud_detector", "customer_support"]
-      
+
       - name: "staging"
         databricks_host: "${STAGING_DATABRICKS_HOST}"
         databricks_token: "${STAGING_DATABRICKS_TOKEN}"
         agents: ["fraud_detector"]
-  
+
   # Self-Monitoring (agents monitor themselves - usually false if using supervisor)
   self_monitoring:
     enabled: false
@@ -194,14 +194,14 @@ monitoring:
 # Users just specify Delta table location - everything else is automatic!
 optimization:
   enabled: true
-  
+
   # Training Data (required)
   training_data:
     delta_table: "main.agents.training_examples"  # Your training data table
     holdout_table: "main.agents.holdout_examples" # Optional: for evaluation
     input_column: "input"                          # Column with input data
     output_column: "expected_output"               # Column with expected output
-  
+
   # DSPy Optimization (task prompts)
   dspy:
     enabled: true
@@ -210,31 +210,31 @@ optimization:
     num_trials: 50               # Total optimization trials
     model_endpoint: "agent-llm"  # Databricks Model Serving endpoint
     temperature: 1.0
-  
+
   # TextGrad Optimization (system prompts)
   textgrad:
     enabled: true
     learning_rate: 0.1
     num_iterations: 20
     batch_size: 10
-  
+
   # Output Configuration
   output:
     uc_volume: "/Volumes/main/agents/prompts"          # Where to save optimized prompts
     mlflow_experiment: "/Users/${USER}/prompt-optimization"  # MLflow tracking
-  
+
   # ============================================================================
   # MLflow 3 Evaluation - Turnkey Prompt Evaluation with Default Scorers
   # ============================================================================
   # Uses MLflow 3's new evaluation API with built-in LLM judges.
   # Automatically evaluates prompts with correctness, groundedness, and more!
-  # 
+  #
   # Reference: https://docs.databricks.com/aws/en/mlflow3/genai/agent-eval-migration
   # ============================================================================
   evaluation:
     enabled: true
     mlflow_version: 3  # Uses mlflow[databricks]>=3.1
-    
+
     # Default Scorers (LLM judges)
     scorers:
       # Core Scorers (always run)
@@ -242,34 +242,34 @@ optimization:
         enabled: true
         # Compares response against expected_response in ground truth
         # Returns: "yes" (correct) or "no" (incorrect)
-      
+
       relevance:
         enabled: true
         # Checks if response is relevant to the input query
         # Returns: "yes" or "no"
-      
+
       safety:
         enabled: true
         # Checks for harmful, unsafe, or inappropriate content
         # Returns: "yes" (safe) or "no" (unsafe)
-      
+
       # Retrieval Scorers (for RAG agents with context)
       groundedness:
         enabled: true
         # Checks if response is grounded in retrieved context
         # Requires: inputs.context or trace with retrieval
         # Returns: "yes" or "no"
-      
+
       retrieval_relevance:
         enabled: true
         # Checks if retrieved context is relevant to query
         # Returns: "yes" or "no"
-      
+
       retrieval_sufficiency:
         enabled: true
         # Checks if context is sufficient to answer query
         # Returns: "yes" or "no"
-      
+
       # Custom Guidelines (optional)
       guidelines:
         enabled: false
@@ -282,7 +282,7 @@ optimization:
           accuracy:
             - "Response must be factually accurate"
             - "Include specific details when available"
-    
+
     # Evaluation Data Format (MLflow 3)
     # Expected structure in your Delta table:
     # {
@@ -290,24 +290,24 @@ optimization:
     #   "outputs": {"response": "..."},                 # renamed from "response"
     #   "expectations": {"expected_response": "..."}    # renamed from "expected_response"
     # }
-    
+
     # Metrics Aggregation
     metrics:
       # How to aggregate pass/fail scorers
       aggregation: "pass_rate"  # pass_rate | accuracy | f1_score
-      
+
       # Thresholds for success
       thresholds:
         correctness_pass_rate: 0.85   # 85% should be correct
         groundedness_pass_rate: 0.90  # 90% should be grounded
         safety_pass_rate: 0.99        # 99% should be safe
-  
+
   # A/B Testing
   ab_testing:
     enabled: true
     baseline_version: "v1"       # Current production version
     traffic_split: 0.1           # % of traffic to new version (10%)
-    
+
   # Scheduling (for Databricks Jobs)
   schedule:
     enabled: false
@@ -319,52 +319,52 @@ databricks:
   workspace:
     host: ${DATABRICKS_HOST}
     token: ${DATABRICKS_TOKEN}
-  
+
   # Unity Catalog
   unity_catalog:
     enabled: true
     catalog_name: sota_agents
     schema_name: production
-    
+
     volumes:
       prompts:
         name: prompts
         type: MANAGED
         comment: "Versioned prompts for agents"
-      
+
       configs:
         name: agent_configs
         type: MANAGED
         comment: "Agent configuration files"
-      
+
       models:
         name: models
         type: MANAGED
         comment: "Model artifacts"
-    
+
     tables:
       telemetry:
         name: agent_telemetry
         type: MANAGED
         partitioned_by: ["date"]
         comment: "Agent execution telemetry"
-      
+
       trajectories:
         name: agent_trajectories
         type: MANAGED
         partitioned_by: ["date", "agent_id"]
         comment: "Agent trajectories for optimization"
-      
+
       evaluations:
         name: agent_evaluations
         type: MANAGED
         comment: "Benchmark evaluation results"
-      
+
       memory:
         name: agent_memory
         type: MANAGED
         comment: "Agent memory storage"
-  
+
   # Model Serving
   model_serving:
     enabled: true
@@ -381,7 +381,7 @@ databricks:
           catalog_name: sota_agents
           schema_name: production
           table_name_prefix: inference_logs
-  
+
   # Compute Clusters
   clusters:
     agent_cluster:
@@ -399,7 +399,7 @@ databricks:
       libraries:
         - pypi:
             package: sota-agent-framework[all]
-  
+
   # Jobs
   jobs:
     batch_processing:
@@ -417,7 +417,7 @@ databricks:
 telemetry:
   enabled: true
   service_name: sota-agent-framework
-  
+
   # OpenTelemetry
   otel:
     traces:
@@ -425,15 +425,15 @@ telemetry:
       sample_rate: 1.0  # 0.0 to 1.0
       batch_size: 100
       flush_interval_seconds: 30
-    
+
     metrics:
       enabled: true
       export_interval_seconds: 60
-    
+
     logs:
       enabled: true
       level: INFO  # DEBUG, INFO, WARNING, ERROR
-  
+
   # Export to Delta Lake
   exporters:
     delta_lake:
@@ -443,20 +443,20 @@ telemetry:
       table: agent_telemetry
       batch_size: 100
       flush_interval_seconds: 30
-    
+
     mlflow:
       enabled: true
       tracking_uri: databricks
       experiment_name: /Users/${USER}/sota-agents
-    
+
     console:
       enabled: false  # Enable for local development
-  
+
   # ============================================================================
   # ZEROBUS - Turnkey Telemetry Streaming 🚀
   # ============================================================================
   # Based on: https://github.com/vivian-xie-db/e2e-chatbot-zerobus
-  # 
+  #
   # Zerobus provides:
   # - Real-time telemetry streaming to Unity Catalog Delta tables
   # - Auto-generated protobuf schemas from your UC table
@@ -473,27 +473,27 @@ telemetry:
   # ============================================================================
   zerobus:
     enabled: false  # Enable after running: agent-telemetry setup
-    
+
     # Unity Catalog settings
     uc_endpoint: "${DATABRICKS_HOST}"
     table: "sota_agents.production.telemetry"  # catalog.schema.table
-    
+
     # OAuth credentials
     client_id: "${DATABRICKS_CLIENT_ID}"
     client_secret: "${DATABRICKS_CLIENT_SECRET}"
-    
+
     # Performance tuning
     batch_size: 1000  # Events per batch
     batch_interval_seconds: 10  # Max seconds between flushes
-    
+
     # Resilience
     max_retries: 3  # Connection retry attempts
     retry_backoff_base: 2  # Exponential backoff (1s, 2s, 4s)
-    
+
     # Proto schema
     proto_file: "record.proto"  # Auto-generated from UC table
     proto_message: "AgentTelemetry"  # Message name
-    
+
     # What to track
     track:
       requests: true  # Agent requests
@@ -503,7 +503,7 @@ telemetry:
       model_calls: true  # LLM inference calls
       tool_calls: true  # Tool/function calls
       memory_ops: true  # Memory operations
-      
+
     # Custom fields (added to every event)
     default_fields:
       environment: "${ENVIRONMENT:production}"
@@ -520,12 +520,12 @@ uc_registry:
       enabled: true
       auto_increment: true
       track_metrics: true
-  
+
   models:
     catalog: sota_agents
     schema: production
     registry_name: sota_models
-  
+
   configs:
     catalog: sota_agents
     schema: production
@@ -534,12 +534,12 @@ uc_registry:
 # Memory System
 memory:
   enabled: true
-  
+
   # Short-term memory
   short_term:
     capacity: 20
     ttl_seconds: 3600
-  
+
   # Long-term memory
   long_term:
     capacity: 10000
@@ -547,18 +547,18 @@ memory:
     catalog: sota_agents
     schema: production
     table: agent_memory
-  
+
   # Context window
   context_window:
     max_tokens: 8000
     reservation: 0.2
-  
+
   # Reflection
   reflection:
     enabled: true
     interval_hours: 24
     trigger_count: 100
-  
+
   # Forgetting
   forgetting:
     enabled: true
@@ -569,7 +569,7 @@ memory:
         min_importance: LOW
       - type: capacity_based
         threshold: 0.9
-  
+
   # Embeddings
   embeddings:
     provider: sentence_transformers  # sentence_transformers, openai, databricks
@@ -582,22 +582,22 @@ reasoning:
   trajectory_optimization:
     enabled: true
     library_size: 1000
-  
+
   distillation:
     enabled: true
     target_compression: 0.5
     method: importance  # importance, summarization, dspy
-  
+
   feedback_loops:
     enabled: true
     max_retries: 3
     min_improvement: 0.1
-  
+
   policies:
     enabled: true
     cost_limit_tokens: 10000
     latency_limit_ms: 5000
-  
+
   rl_tuning:
     enabled: true
     learning_rate: 0.01
@@ -607,11 +607,11 @@ reasoning:
 # Benchmarking
 evaluation:
   enabled: true
-  
+
   benchmark_dir: benchmarks
   agents_dir: benchmark_agents
   output_dir: benchmark_results
-  
+
   default_metrics:
     - tool_call_success
     - plan_correctness
@@ -619,7 +619,7 @@ evaluation:
     - latency
     - coherence
     - accuracy
-  
+
   thresholds:
     tool_call_success: 0.9
     plan_correctness: 0.8
@@ -627,7 +627,7 @@ evaluation:
     latency: 0.8
     coherence: 0.7
     accuracy: 0.8
-  
+
   parallel_execution: false
   max_workers: 4
   generate_leaderboard: true
@@ -635,17 +635,17 @@ evaluation:
 # Visualization
 visualization:
   enabled: true
-  
+
   # Databricks-specific
   databricks:
     auto_display: true
     widget_enabled: true
-  
+
   # MLflow integration
   mlflow:
     auto_log_viz: true
     log_on_completion: true
-  
+
   # Output formats
   formats:
     - mermaid  # Execution graphs
@@ -657,14 +657,14 @@ agents:
   default_execution_mode: ray_task  # in_process, process_pool, ray_task, ray_actor
   default_priority: NORMAL  # CRITICAL, HIGH, NORMAL, LOW
   default_timeout: 30
-  
+
   # Critical path agents
   critical_path:
     execution_mode: in_process
     priority: CRITICAL
     timeout: 10
     sla_ms: 500
-  
+
   # Enrichment agents
   enrichment:
     execution_mode: ray_task
@@ -676,14 +676,14 @@ agents:
 mlflow:
   tracking_uri: databricks
   experiment_name: /Users/${USER}/sota-agents
-  
+
   # Auto-logging
   autolog:
     enabled: true
     log_models: true
     log_input_examples: true
     log_model_signatures: true
-  
+
   # Model registry
   model_registry:
     enabled: true
@@ -696,7 +696,7 @@ deployment:
   package:
     name: sota-agent-framework
     version: 0.2.0
-  
+
   # Environment-specific overrides
   environments:
     dev:
@@ -707,30 +707,30 @@ deployment:
         exporters:
           console:
             enabled: true
-      
+
       databricks:
         clusters:
           agent_cluster:
             autoscale:
               min_workers: 1
               max_workers: 2
-    
+
     staging:
       telemetry:
         otel:
           traces:
             sample_rate: 0.5
-      
+
       databricks:
         unity_catalog:
           catalog_name: sota_agents_staging
-    
+
     production:
       telemetry:
         otel:
           traces:
             sample_rate: 0.1
-      
+
       databricks:
         model_serving:
           endpoints:
@@ -746,7 +746,7 @@ security:
   secrets:
     provider: databricks  # databricks, env, vault
     scope: sota-agents
-  
+
   # Access control
   access_control:
     enabled: true
@@ -768,16 +768,16 @@ mcp_deployment_config: "config/mcp_deployment_config.yaml"
 
 agent_self_improvement:
   enabled: true
-  
+
   # How often agents check their performance
   check_interval_hours: 24  # Run self-improvement cycle every 24 hours
-  
+
   # Performance Thresholds (trigger optimization when violated)
   performance_thresholds:
     Correctness: 0.8          # Minimum Correctness score
     Safety: 0.95              # Minimum Safety score
     latency_ms: 2000          # Maximum latency in milliseconds
-  
+
   # Optimization Settings
   optimization:
     enabled: true
@@ -786,7 +786,7 @@ agent_self_improvement:
     method: "both"                        # "dspy", "textgrad", or "both"
     max_iterations: 10                    # DSPy/TextGrad iterations
     max_training_examples: 100            # Maximum examples to use
-  
+
   # Dataset Curation Settings
   dataset_curation:
     enabled: true
@@ -797,20 +797,20 @@ agent_self_improvement:
       high_quality_traces: true           # From MLflow traces
       expert_review: true                 # From human review
       user_feedback: true                 # From positive user feedback
-  
+
   # Monitoring & Alerts
   monitoring:
     enabled: true
     alert_on_critical_violations: true    # Alert when critical thresholds violated
     alert_on_degrading_trends: true       # Alert when performance trending down
     trend_analysis_window_hours: 168     # Analyze 7 days of data
-  
+
   # Background Service Settings
   background_service:
     enabled: true                         # Run as background task in app
     run_on_startup: true                  # Check performance on app startup
     run_on_schedule: true                 # Run periodic checks
-  
+
   # Per-Agent Overrides (optional)
   agents:
     fraud_detector:
@@ -819,11 +819,10 @@ agent_self_improvement:
         Safety: 0.98
       optimization:
         cooldown_hours: 12                # More aggressive optimization
-    
+
     customer_support:
       performance_thresholds:
         Correctness: 0.75                 # Lower bar for support
         Safety: 0.95
       dataset_curation:
         min_quality_score: 0.90           # More lenient curation
-

@@ -13,27 +13,27 @@ from pydantic import BaseModel, Field
 class FewShotExample(BaseModel):
     """
     Few-shot example for prompt optimization.
-    
+
     Used by DSPy BootstrapFewShot to improve task prompts.
     """
-    
+
     example_id: str = Field(..., description="Unique example ID")
-    
+
     # Input-output pair
     input: str = Field(..., description="Example input (transaction context)")
     output: str = Field(..., description="Desired output (risk narrative)")
-    
+
     # Metadata
     transaction_id: Optional[str] = Field(default=None)
     fraud_label: Optional[str] = Field(default=None, description="Ground truth")
-    
+
     quality_score: float = Field(
         default=1.0,
         ge=0.0,
         le=1.0,
         description="Quality rating of this example"
     )
-    
+
     # Usage tracking
     times_used: int = Field(default=0, ge=0)
     success_rate: Optional[float] = Field(
@@ -42,9 +42,9 @@ class FewShotExample(BaseModel):
         le=1.0,
         description="Success rate when using this example"
     )
-    
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -60,20 +60,20 @@ class FewShotExample(BaseModel):
 class PromptVersion(BaseModel):
     """
     Versioned prompt template.
-    
+
     Tracks prompt versions in Unity Catalog for reproducibility.
     """
-    
+
     prompt_id: str = Field(..., description="Unique prompt identifier")
     version: str = Field(..., description="Version string (e.g., v1.3)")
-    
+
     prompt_type: str = Field(
         ...,
         description="system, task, chain_of_thought, react"
     )
-    
+
     content: str = Field(..., description="Actual prompt template")
-    
+
     # Optimization provenance
     optimized_by: Optional[str] = Field(
         default=None,
@@ -83,19 +83,19 @@ class PromptVersion(BaseModel):
         default_factory=dict,
         description="Optimizer configuration used"
     )
-    
+
     # Performance metrics
     avg_accuracy: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     avg_latency_ms: Optional[float] = Field(default=None, ge=0)
-    
+
     # UC tracking
     uc_path: Optional[str] = Field(
         default=None,
         description="Unity Catalog path where stored"
     )
-    
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -113,32 +113,32 @@ class PromptVersion(BaseModel):
 class DSPyOptimizerMetadata(BaseModel):
     """
     Metadata from DSPy optimization run.
-    
+
     Tracks task prompt optimization results and selected examples.
     """
-    
+
     run_id: str = Field(..., description="Optimization run ID")
     transaction_id: Optional[str] = Field(
         default=None,
         description="If optimizing for specific transaction"
     )
-    
+
     # Prompt versions used
     task_prompt_version: str = Field(..., description="Task prompt version")
     system_prompt_version: str = Field(..., description="System prompt version")
-    
+
     # Optimizer details
     optimizer_type: str = Field(
         ...,
         description="MIPRO, COPRO, BootstrapFewShot"
     )
-    
+
     # Scorer results
     scorer_results: Dict[str, float] = Field(
         default_factory=dict,
         description="Metric name -> score mapping"
     )
-    
+
     # Specific metrics
     accuracy: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     relevance: Optional[float] = Field(default=None, ge=0.0, le=1.0)
@@ -150,18 +150,18 @@ class DSPyOptimizerMetadata(BaseModel):
         default=False,
         description="Whether re-optimization needed"
     )
-    
+
     # Selected few-shot examples
     examples_selected: List[FewShotExample] = Field(
         default_factory=list,
         description="Few-shot examples selected for this run"
     )
-    
+
     # MLflow tracking
     mlflow_run_id: Optional[str] = Field(default=None)
-    
+
     optimized_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -193,12 +193,12 @@ class DSPyOptimizerMetadata(BaseModel):
 class HighRiskSelectionMetadata(BaseModel):
     """
     Metadata for high-risk transaction selection.
-    
+
     Determines which transactions get detailed MLflow scoring vs. sampling.
     """
-    
+
     transaction_id: str = Field(...)
-    
+
     # Selection criteria
     is_high_risk: bool = Field(..., description="Selected for detailed evaluation")
     risk_score: float = Field(..., ge=0.0, le=1.0)
@@ -208,27 +208,27 @@ class HighRiskSelectionMetadata(BaseModel):
         le=1.0,
         description="Threshold used for selection"
     )
-    
+
     # Reasons for selection
     selection_reasons: List[str] = Field(
         default_factory=list,
         description="Why this transaction was selected"
     )
-    
+
     # Evaluation configuration
     should_run_mlflow_scorers: bool = Field(default=False)
     should_log_detailed_trace: bool = Field(default=False)
     should_trigger_manual_review: bool = Field(default=False)
-    
+
     # Performance optimization
     use_cached_embeddings: bool = Field(
         default=False,
         description="Whether to use prefetched embeddings from Redis"
     )
     embedding_cache_key: Optional[str] = Field(default=None)
-    
+
     selected_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -252,21 +252,21 @@ class HighRiskSelectionMetadata(BaseModel):
 class StreamingOutput(BaseModel):
     """
     Simplified output for dashboard streaming.
-    
+
     Lightweight structure for real-time display.
     """
-    
+
     transaction_id: str = Field(...)
     narrative: str = Field(..., description="Concise risk narrative")
     risk_score: float = Field(..., ge=0.0, le=1.0)
     recommended_action: str = Field(..., description="approve, decline, review")
-    
+
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Optional enrichment
     key_risk_factors: Optional[List[str]] = Field(default=None)
     confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -279,4 +279,3 @@ class StreamingOutput(BaseModel):
                 "confidence": 0.94,
             }
         }
-

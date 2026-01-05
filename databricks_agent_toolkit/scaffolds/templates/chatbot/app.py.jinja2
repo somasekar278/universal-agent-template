@@ -18,6 +18,7 @@ config = yaml.safe_load((Path(__file__).parent / "config.yaml").read_text())
 app = Flask(__name__)
 PORT = int(os.getenv('DATABRICKS_APP_PORT', 8000))
 STREAMING = config["model"].get("streaming", False)
+TOKEN_DELAY_MS = config["model"].get("token_delay_ms", 30)
 
 llm = DatabricksLLM(
     endpoint=config["model"]["endpoint"],
@@ -68,32 +69,56 @@ CHAT_HTML = '''<!DOCTYPE html>
         </div>
     </div>
     <script>
-        const STREAMING = {{ 'true' if streaming_enabled else 'false' }};
-        
+        const STREAMING = {% raw %}{{ streaming_enabled|lower }}{% endraw %};
+        const TOKEN_DELAY_MS = {% raw %}{{ token_delay_ms }}{% endraw %};  // Configurable in config.yaml
+
         function sendMessage() {
             const input = document.getElementById('input-box');
             const sendBtn = document.getElementById('send-btn');
             const message = input.value.trim();
             if (!message) return;
-            
+
             addBubble('user', message);
             input.value = '';
             sendBtn.disabled = true;
-            
+
             if (STREAMING) {
                 const bubble = addBubble('assistant', '');
+                const tokenQueue = [];
+                let isProcessing = false;
+                let isDone = false;
+
+                // Process queue with delay (typewriter effect)
+                function processQueue() {
+                    if (isProcessing) return;
+                    isProcessing = true;
+
+                    const interval = setInterval(() => {
+                        if (tokenQueue.length > 0) {
+                            bubble.textContent += tokenQueue.shift();
+                            document.getElementById('chat-box').scrollTop = 999999;
+                        } else if (isDone) {
+                            clearInterval(interval);
+                            sendBtn.disabled = false;
+                        }
+                    }, TOKEN_DELAY_MS);
+                }
+
                 const eventSource = new EventSource('/api/chat/stream?message=' + encodeURIComponent(message));
-                
+
                 eventSource.onmessage = (e) => {
-                    bubble.textContent += e.data;
-                    document.getElementById('chat-box').scrollTop = 999999;
+                    // Split into individual characters for smooth rendering
+                    for (const char of e.data) {
+                        tokenQueue.push(char);
+                    }
+                    processQueue();
                 };
-                
+
                 eventSource.addEventListener('done', () => {
+                    isDone = true;
                     eventSource.close();
-                    sendBtn.disabled = false;
                 });
-                
+
                 eventSource.onerror = () => {
                     if (!bubble.textContent) bubble.textContent = 'Error connecting';
                     eventSource.close();
@@ -101,7 +126,7 @@ CHAT_HTML = '''<!DOCTYPE html>
                 };
             } else {
                 const loadingId = addBubble('assistant', 'Thinking...', 'loading').id;
-                
+
                 fetch('/api/chat', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -120,7 +145,7 @@ CHAT_HTML = '''<!DOCTYPE html>
                 });
             }
         }
-        
+
         function addBubble(role, content, extraClass = '') {
             const chatBox = document.getElementById('chat-box');
             const bubble = document.createElement('div');
@@ -141,7 +166,8 @@ def home():
         CHAT_HTML,
         name=config.get("agent_name", "{{ name }}"),
         model=config["model"]["endpoint"],
-        streaming_enabled=STREAMING
+        streaming_enabled=STREAMING,
+        token_delay_ms=TOKEN_DELAY_MS
     )
 
 @app.route('/health')
@@ -156,7 +182,7 @@ def chat():
         user_message = request.get_json().get('message', '')
         if not user_message:
             return jsonify({"error": "No message"}), 400
-        
+
         response = asyncio.run(llm.chat(
             messages=[
                 {"role": "system", "content": "You are a helpful AI assistant."},
@@ -165,7 +191,7 @@ def chat():
             temperature=config["model"].get("temperature", 0.7),
             max_tokens=config["model"].get("max_tokens", 500)
         ))
-        
+
         return jsonify({"response": response["content"]})
     except Exception as e:
         print(f"❌ Error: {e}")
@@ -178,7 +204,7 @@ def chat_stream():
     user_message = request.args.get('message', '')
     if not user_message:
         return jsonify({"error": "No message"}), 400
-    
+
     def generate():
         async def async_stream():
             try:
@@ -197,7 +223,7 @@ def chat_stream():
                 print(f"❌ Streaming error: {e}")
                 yield f"data: Error: {str(e)}\n\n"
                 yield "event: done\ndata: \n\n"
-        
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -210,7 +236,7 @@ def chat_stream():
                     break
         finally:
             loop.close()
-    
+
     return Response(generate(), mimetype='text/event-stream')
 
 if __name__ == '__main__':

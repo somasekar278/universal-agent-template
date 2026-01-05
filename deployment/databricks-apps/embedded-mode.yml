@@ -11,12 +11,12 @@
 resources:
   - name: agent-app-embedded
     description: "Agent application with embedded MCP servers"
-    
+
     runtime:
       kind: container
       image: "your-registry/agent-app:latest"
       command: ["uvicorn", "examples.databricks_app_configurable_mcp:app", "--host", "0.0.0.0", "--port", "8000"]
-      
+
       env:
         # Databricks credentials
         - name: DATABRICKS_HOST
@@ -25,17 +25,17 @@ resources:
         - name: DATABRICKS_TOKEN
           valueFrom:
             secretRef: databricks-token
-        
+
         # MCP deployment mode
         - name: MCP_DEPLOYMENT_CONFIG
           value: "config/mcp_deployment_config.yaml"
         - name: ENVIRONMENT
           value: "production"
-        
+
         # MLflow
         - name: MLFLOW_TRACKING_URI
           value: "databricks"
-      
+
       ports:
         - name: app
           containerPort: 8000
@@ -46,7 +46,7 @@ resources:
         - name: databricks-mcp
           containerPort: 6000
           protocol: TCP
-      
+
       resources:
         requests:
           cpu: "2"        # 2 vCPU guaranteed
@@ -54,7 +54,7 @@ resources:
         limits:
           cpu: "4"        # Can burst to 4 vCPU
           memory: "16Gi"  # Can burst to 16GB
-      
+
       readinessProbe:
         httpGet:
           path: /health
@@ -63,7 +63,7 @@ resources:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-      
+
       livenessProbe:
         httpGet:
           path: /health
@@ -87,4 +87,3 @@ ingress:
                 name: agent-app-embedded
                 port:
                   number: 8000
-

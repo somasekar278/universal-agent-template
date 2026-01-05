@@ -65,29 +65,29 @@ class ManualImprovementRequest(BaseModel):
 async def lifespan(app: FastAPI):
     """
     Application lifespan manager.
-    
+
     Startup:
     1. Load configuration
     2. Start MCP servers (embedded mode)
     3. Start self-improvement service
-    
+
     Shutdown:
     1. Stop self-improvement service
     2. Stop MCP servers
     """
     global mcp_manager, improvement_service
-    
+
     logger.info("🚀 Starting Databricks App with Self-Improvement")
-    
+
     # Load configuration
     config_path = Path("config/agent_config.yaml")
     if not config_path.exists():
         logger.error(f"Config file not found: {config_path}")
         raise FileNotFoundError(f"Config file not found: {config_path}")
-    
+
     with open(config_path) as f:
         config = yaml.safe_load(f)
-    
+
     try:
         # Step 1: Initialize and start MCP manager
         logger.info("Step 1/3: Starting MCP servers...")
@@ -95,7 +95,7 @@ async def lifespan(app: FastAPI):
         mcp_manager = MCPServerManager(mcp_config_path)
         await mcp_manager.start()
         logger.info("✅ MCP servers started")
-        
+
         # Step 2: Initialize self-improvement service
         logger.info("Step 2/3: Starting self-improvement service...")
         improvement_service = SelfImprovementService(config)
@@ -103,25 +103,25 @@ async def lifespan(app: FastAPI):
         import asyncio
         asyncio.create_task(improvement_service.start())
         logger.info("✅ Self-improvement service started")
-        
+
         logger.info("Step 3/3: Application ready!")
         logger.info("✅ All services operational\n")
-        
+
         yield
-        
+
         # Shutdown
         logger.info("\n🛑 Shutting down application...")
-        
+
         if improvement_service:
             await improvement_service.stop()
             logger.info("✅ Self-improvement service stopped")
-        
+
         if mcp_manager:
             await mcp_manager.stop()
             logger.info("✅ MCP servers stopped")
-        
+
         logger.info("✅ Shutdown complete")
-        
+
     except Exception as e:
         logger.error(f"❌ Startup failed: {e}")
         raise
@@ -147,12 +147,12 @@ app = FastAPI(
 async def agent_chat(agent_name: str, request: ChatRequest):
     """
     Chat with an agent.
-    
+
     The agent automatically improves itself in the background.
     """
     # TODO: Implement actual agent logic here
     # For now, return a mock response
-    
+
     return ChatResponse(
         agent=agent_name,
         response=f"Agent {agent_name} received: {request.message}",
@@ -168,13 +168,13 @@ async def agent_status(agent_name: str):
     """
     if not improvement_service:
         raise HTTPException(status_code=503, detail="Service not ready")
-    
+
     service_status = await improvement_service.get_service_status()
     agent_status = service_status.get("agents", {}).get(agent_name)
-    
+
     if not agent_status:
         raise HTTPException(status_code=404, detail=f"Agent not found: {agent_name}")
-    
+
     return {
         "agent_name": agent_name,
         "mcp_connected": agent_status.get("connected", False),
@@ -192,9 +192,9 @@ async def root():
     """Root endpoint with service information"""
     if not mcp_manager:
         return {"status": "starting", "message": "Services initializing..."}
-    
+
     endpoints = mcp_manager.get_endpoints()
-    
+
     return {
         "status": "healthy",
         "service": "Agent Framework with Self-Improvement",
@@ -215,7 +215,7 @@ async def root():
 async def health():
     """
     Comprehensive health check.
-    
+
     Checks:
     - MCP servers health
     - Self-improvement service status
@@ -227,22 +227,22 @@ async def health():
             "mcp_servers": "initializing",
             "self_improvement": "initializing"
         }
-    
+
     # Get MCP health
     mcp_health = await mcp_manager.get_health()
-    
+
     # Get self-improvement status
     si_status = await improvement_service.get_service_status()
-    
+
     # Overall health
     mcp_healthy = (
         mcp_health.get("mlflow_mcp", {}).get("healthy", False) and
         mcp_health.get("databricks_mcp", {}).get("healthy", False)
     )
     si_healthy = si_status.get("running", False)
-    
+
     overall_status = "healthy" if (mcp_healthy and si_healthy) else "degraded"
-    
+
     return {
         "status": overall_status,
         "mcp_servers": mcp_health,
@@ -261,9 +261,9 @@ async def resource_health():
     """
     if not mcp_manager:
         raise HTTPException(status_code=503, detail="Service not ready")
-    
+
     usage = await mcp_manager.get_resource_usage()
-    
+
     return {
         "status": "ok",
         "deployment_mode": mcp_manager.mode.value,
@@ -279,7 +279,7 @@ async def resource_health():
 async def trigger_manual_improvement(agent_name: str, request: ManualImprovementRequest):
     """
     Manually trigger self-improvement for an agent.
-    
+
     Useful for:
     - Testing
     - Emergency optimization
@@ -287,12 +287,12 @@ async def trigger_manual_improvement(agent_name: str, request: ManualImprovement
     """
     if not improvement_service:
         raise HTTPException(status_code=503, detail="Self-improvement service not ready")
-    
+
     result = await improvement_service.trigger_manual_cycle(agent_name)
-    
+
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Unknown error"))
-    
+
     return {
         "status": "triggered",
         "agent_name": agent_name,
@@ -308,7 +308,7 @@ async def self_improvement_status():
     """
     if not improvement_service:
         raise HTTPException(status_code=503, detail="Service not ready")
-    
+
     return await improvement_service.get_service_status()
 
 
@@ -319,7 +319,7 @@ async def mcp_config():
     """
     if not mcp_manager:
         raise HTTPException(status_code=503, detail="Service not ready")
-    
+
     return {
         "deployment_mode": mcp_manager.mode.value,
         "endpoints": mcp_manager.get_endpoints(),
@@ -334,16 +334,16 @@ async def restart_mcp():
     """
     if not mcp_manager:
         raise HTTPException(status_code=503, detail="Service not ready")
-    
+
     if mcp_manager.mode.value != "embedded":
         raise HTTPException(
             status_code=400,
             detail=f"Restart only supported in embedded mode (current: {mcp_manager.mode.value})"
         )
-    
+
     await mcp_manager.stop()
     await mcp_manager.start()
-    
+
     return {
         "status": "restarted",
         "message": "MCP servers restarted successfully"
@@ -356,11 +356,10 @@ async def restart_mcp():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         app,
         host="0.0.0.0",
         port=8000,
         log_level="info"
     )
-

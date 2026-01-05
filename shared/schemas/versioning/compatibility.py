@@ -12,12 +12,12 @@ from pydantic.fields import FieldInfo
 
 class ChangeType(str, Enum):
     """Types of schema changes."""
-    
+
     # Non-breaking changes
     FIELD_ADDED_OPTIONAL = "field_added_optional"
     FIELD_DESCRIPTION_CHANGED = "field_description_changed"
     DEFAULT_VALUE_ADDED = "default_value_added"
-    
+
     # Breaking changes
     FIELD_REMOVED = "field_removed"
     FIELD_RENAMED = "field_renamed"
@@ -31,13 +31,13 @@ class ChangeType(str, Enum):
 
 class BreakingChange(BaseModel):
     """Represents a breaking change between schema versions."""
-    
+
     change_type: ChangeType
     field_name: str
     description: str
     old_value: Optional[str] = None
     new_value: Optional[str] = None
-    
+
     def is_breaking(self) -> bool:
         """Check if this is a breaking change."""
         breaking_types = {
@@ -54,10 +54,10 @@ class BreakingChange(BaseModel):
 class CompatibilityChecker:
     """
     Checks compatibility between two schema versions.
-    
+
     Detects breaking and non-breaking changes.
     """
-    
+
     @staticmethod
     def compare_schemas(
         old_schema: Type[BaseModel],
@@ -65,22 +65,22 @@ class CompatibilityChecker:
     ) -> List[BreakingChange]:
         """
         Compare two schema versions and identify changes.
-        
+
         Args:
             old_schema: Old schema version
             new_schema: New schema version
-            
+
         Returns:
             List of detected changes
         """
         changes = []
-        
+
         old_fields = old_schema.model_fields
         new_fields = new_schema.model_fields
-        
+
         old_field_names = set(old_fields.keys())
         new_field_names = set(new_fields.keys())
-        
+
         # Removed fields
         removed = old_field_names - new_field_names
         for field_name in removed:
@@ -89,13 +89,13 @@ class CompatibilityChecker:
                 field_name=field_name,
                 description=f"Field '{field_name}' was removed"
             ))
-        
+
         # Added fields
         added = new_field_names - old_field_names
         for field_name in added:
             field_info = new_fields[field_name]
             is_required = field_info.is_required()
-            
+
             if is_required:
                 changes.append(BreakingChange(
                     change_type=ChangeType.FIELD_MADE_REQUIRED,
@@ -108,20 +108,20 @@ class CompatibilityChecker:
                     field_name=field_name,
                     description=f"Optional field '{field_name}' was added"
                 ))
-        
+
         # Changed fields
         common = old_field_names & new_field_names
         for field_name in common:
             old_field = old_fields[field_name]
             new_field = new_fields[field_name]
-            
+
             field_changes = CompatibilityChecker._compare_field(
                 field_name, old_field, new_field
             )
             changes.extend(field_changes)
-        
+
         return changes
-    
+
     @staticmethod
     def _compare_field(
         field_name: str,
@@ -130,7 +130,7 @@ class CompatibilityChecker:
     ) -> List[BreakingChange]:
         """Compare a single field between versions."""
         changes = []
-        
+
         # Type changed
         if old_field.annotation != new_field.annotation:
             changes.append(BreakingChange(
@@ -140,11 +140,11 @@ class CompatibilityChecker:
                 old_value=str(old_field.annotation),
                 new_value=str(new_field.annotation)
             ))
-        
+
         # Required/optional changed
         old_required = old_field.is_required()
         new_required = new_field.is_required()
-        
+
         if old_required and not new_required:
             changes.append(BreakingChange(
                 change_type=ChangeType.FIELD_MADE_OPTIONAL,
@@ -157,11 +157,11 @@ class CompatibilityChecker:
                 field_name=field_name,
                 description=f"Field '{field_name}' changed from optional to required"
             ))
-        
+
         # Default value changed
         old_default = old_field.default
         new_default = new_field.default
-        
+
         if old_default != new_default:
             if old_default is not None and new_default is None:
                 changes.append(BreakingChange(
@@ -185,9 +185,9 @@ class CompatibilityChecker:
                     old_value=str(old_default),
                     new_value=str(new_default)
                 ))
-        
+
         return changes
-    
+
     @staticmethod
     def is_backward_compatible(
         old_schema: Type[BaseModel],
@@ -195,17 +195,17 @@ class CompatibilityChecker:
     ) -> tuple[bool, List[BreakingChange]]:
         """
         Check if new schema is backward compatible with old schema.
-        
+
         Returns:
             Tuple of (is_compatible, list_of_breaking_changes)
         """
         changes = CompatibilityChecker.compare_schemas(old_schema, new_schema)
         breaking_changes = [c for c in changes if c.is_breaking()]
-        
+
         is_compatible = len(breaking_changes) == 0
-        
+
         return is_compatible, breaking_changes
-    
+
     @staticmethod
     def suggest_version_bump(
         old_schema: Type[BaseModel],
@@ -214,31 +214,31 @@ class CompatibilityChecker:
     ) -> str:
         """
         Suggest next version number based on changes.
-        
+
         Uses semantic versioning:
         - Major bump for breaking changes
         - Minor bump for new features
         - Patch bump for fixes/docs
-        
+
         Args:
             old_schema: Old schema version
             new_schema: New schema version
             current_version: Current version string
-            
+
         Returns:
             Suggested new version
         """
         from packaging import version as pkg_version
-        
+
         changes = CompatibilityChecker.compare_schemas(old_schema, new_schema)
-        
+
         if not changes:
             # No changes - patch bump
             ver = pkg_version.parse(current_version)
             return f"{ver.major}.{ver.minor}.{ver.micro + 1}"
-        
+
         has_breaking = any(c.is_breaking() for c in changes)
-        
+
         if has_breaking:
             # Breaking changes - major bump
             ver = pkg_version.parse(current_version)
@@ -247,4 +247,3 @@ class CompatibilityChecker:
             # Non-breaking additions - minor bump
             ver = pkg_version.parse(current_version)
             return f"{ver.major}.{ver.minor + 1}.0"
-

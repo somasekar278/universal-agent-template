@@ -14,10 +14,10 @@ Install:
 
 Usage:
     from telemetry import init_telemetry, trace_agent
-    
+
     # Initialize (auto-configures for Databricks)
     init_telemetry()
-    
+
     # Trace agent execution
     @trace_agent
     async def my_agent(input_data):
@@ -59,22 +59,21 @@ __all__ = [
     "trace_tool_call",
     "get_tracer",
     "AgentTracer",
-    
+
     # Metrics
     "record_metric",
     "record_latency",
     "record_cost",
     "record_tokens",
     "MetricsRecorder",
-    
+
     # Exporter
     "DeltaLakeExporter",
     "ZerobusExporter",
     "ExporterConfig",
-    
+
     # Context
     "get_trace_context",
     "set_trace_context",
     "TraceContext",
 ]
-

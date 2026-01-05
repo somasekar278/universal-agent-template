@@ -9,23 +9,23 @@ description: Agent Framework - Production deployment with hot pools
 # ============================================================================
 compute:
   type: serverless
-  
+
   # Hot pool configuration
   min_instances: 2          # Always keep 2 containers warm
   max_instances: 20         # Scale up to 20 under load
   scale_to_zero: false      # NEVER scale to zero (production requirement)
-  
+
   # Scaling behavior
   auto_scale: true
   scale_up:
     cpu_threshold: 70%      # Scale up when CPU > 70%
     memory_threshold: 80%   # Scale up when memory > 80%
     queue_depth: 50         # Scale up when queue > 50 requests
-  
+
   scale_down:
     cooldown_minutes: 5     # Wait 5 min before scaling down
     idle_threshold: 10%     # Scale down when idle < 10%
-  
+
   # Resource limits per container
   resources:
     cpu: "2"                # 2 CPU cores
@@ -39,42 +39,42 @@ env:
   # Databricks connection
   - name: DATABRICKS_HOST
     value: ${workspace.host}
-  
+
   - name: DATABRICKS_TOKEN
     secret: agents/databricks-token  # Stored in Databricks secrets
-  
+
   # Deployment mode
   - name: DEPLOYMENT_MODE
     value: "combined"  # or "multi-port"
-  
+
   # Environment
   - name: ENVIRONMENT
     value: "production"
-  
+
   # Model Serving endpoints
   - name: LLM_ENDPOINT
     value: "fraud-agent-llm"
-  
+
   - name: EMBEDDING_ENDPOINT
     value: "fraud-agent-embeddings"
-  
+
   # Unity Catalog paths
   - name: UC_CONFIG_PATH
     value: "/Volumes/main/agents/configs/sota_config.yaml"
-  
+
   - name: UC_PROMPTS_PATH
     value: "/Volumes/main/agents/prompts"
-  
+
   # Telemetry configuration
   - name: TELEMETRY_ENABLED
     value: "true"
-  
+
   - name: TELEMETRY_SAMPLE_RATE
     value: "0.1"  # Sample 10% for cost efficiency
-  
+
   - name: ZEROBUS_BATCH_SIZE
     value: "1000"
-  
+
   - name: ZEROBUS_FLUSH_INTERVAL
     value: "10"  # seconds
 
@@ -85,24 +85,24 @@ unity_catalog:
   # Catalogs
   catalogs:
     - main
-  
+
   # Schemas
   schemas:
     - main.agents
-  
+
   # Volumes (for configs, prompts)
   volumes:
     - main.agents.configs
     - main.agents.prompts
     - main.agents.temp  # For ZeroBus temp files
-  
+
   # Tables (for memory, telemetry)
   tables:
     - main.agents.memory_metadata
     - main.agents.traces
     - main.agents.metrics
     - main.agents.logs
-  
+
   # Vector Search indexes
   vector_indexes:
     - main.agents.memory_index
@@ -125,7 +125,7 @@ source:
     url: https://github.com/yourorg/fraud-detection-agent
     branch: main
     path: /
-  
+
   # Option 2: From Workspace
   # workspace:
   #   path: /Workspace/apps/fraud-detection-agent
@@ -151,7 +151,7 @@ networking:
     - name: http
       container_port: 8000
       protocol: TCP
-  
+
   # For multi-port deployment
   # ports:
   #   - name: api
@@ -160,7 +160,7 @@ networking:
   #     container_port: 8001
   #   - name: mcp
   #     container_port: 8002
-  
+
   # Ingress (external access)
   ingress:
     enabled: true
@@ -179,7 +179,7 @@ security:
   authentication:
     enabled: true
     type: "databricks"  # Use Databricks authentication
-  
+
   # Authorization (RBAC)
   authorization:
     enabled: true
@@ -187,11 +187,11 @@ security:
       - path: /execute
         methods: [POST]
         required_permissions: [agents.execute]
-      
+
       - path: /health
         methods: [GET]
         required_permissions: []  # Public
-  
+
   # Secrets
   secrets:
     - name: databricks-token
@@ -204,12 +204,12 @@ security:
 logging:
   level: INFO  # DEBUG, INFO, WARNING, ERROR
   format: json
-  
+
   # Log destinations
   destinations:
     - type: delta_lake
       table: main.agents.logs
-    
+
     - type: stdout  # For Databricks Apps console
 
 # ============================================================================
@@ -221,7 +221,7 @@ monitoring:
     enabled: true
     path: /metrics
     port: 8000
-  
+
   # Databricks dashboards
   dashboards:
     - name: "Agent Performance"
@@ -237,4 +237,3 @@ tags:
   project: fraud-detection
   cost-center: ml-ops
   framework: sota-agent
-

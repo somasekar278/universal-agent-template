@@ -15,33 +15,33 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
         pip install pytest black flake8 isort
-    
+
     - name: Check code formatting (Black)
       run: black --check --line-length=120 databricks_agent_toolkit/
-    
+
     - name: Check import sorting (isort)
       run: isort --check --profile black --line-length 120 databricks_agent_toolkit/
-    
+
     - name: Lint with flake8
       run: flake8 databricks_agent_toolkit/ --max-line-length=120 --ignore=E203,W503
-    
+
     - name: Check template sizes
       run: python3 scripts/check_template_size.py
-    
+
     - name: Run unit tests
       run: pytest tests/ -v -m "not integration"
-    
+
     - name: Test scaffold generation
       run: |
         python3 -c "
@@ -55,21 +55,21 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: test
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
         pip install pytest requests
-    
+
     - name: Run E2E tests
       env:
         DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
@@ -81,4 +81,3 @@ jobs:
         else
           echo "⚠️  Skipping E2E tests (no credentials)"
         fi
-

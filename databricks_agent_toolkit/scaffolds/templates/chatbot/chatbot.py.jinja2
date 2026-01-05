@@ -33,10 +33,10 @@ async def chat(user_message: str):
         {"role": "system", "content": "You are a helpful AI assistant."},
         {"role": "user", "content": user_message}
     ]
-    
+
     temperature = config["model"].get("temperature", 0.7)
     max_tokens = config["model"].get("max_tokens", 500)
-    
+
     if config["model"].get("streaming", False):
         # Streaming: yield tokens as they arrive
         async for chunk in llm.stream(messages=messages, temperature=temperature, max_tokens=max_tokens):
@@ -51,7 +51,7 @@ async def main():
     """Simple CLI chat interface."""
     print(f"🤖 {{ name }}")
     print("Type 'quit' to exit\n")
-    
+
     # Setup MLflow
     mlflow.set_tracking_uri("databricks")
     try:
@@ -59,22 +59,21 @@ async def main():
         print(f"📊 MLflow: {config['mlflow']['experiment']}\n")
     except Exception as e:
         print(f"⚠️  MLflow: {e}\n")
-    
+
     # Chat loop
     with mlflow.start_run(run_name="chat_session"):
         while True:
             user_input = input("You: ")
             if user_input.lower() == 'quit':
                 break
-            
+
             print("Bot: ", end="", flush=True)
             async for chunk in chat(user_input):
                 print(chunk, end="", flush=True)
             print("\n")
-    
+
     print("👋 Thanks for chatting!")
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-

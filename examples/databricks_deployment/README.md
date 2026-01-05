@@ -227,7 +227,7 @@ Databricks SQL dashboards
 # Recent agent executions
 databricks sql execute \
   --statement "
-    SELECT 
+    SELECT
       timestamp,
       agent_id,
       duration_ms,
@@ -240,7 +240,7 @@ databricks sql execute \
 # Error rate by agent
 databricks sql execute \
   --statement "
-    SELECT 
+    SELECT
       agent_id,
       COUNT(*) as total,
       SUM(CASE WHEN status = 'ERROR' THEN 1 ELSE 0 END) as errors,
@@ -340,4 +340,3 @@ curl $APP_URL/health
 ---
 
 **🎉 Your agent solution is production-ready on Databricks!**
-

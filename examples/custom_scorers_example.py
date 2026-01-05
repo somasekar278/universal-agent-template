@@ -23,30 +23,30 @@ from evaluation.custom_scorers import (
     exact_match,
     contains_keywords,
     forbidden_terms,
-    
+
     # Format checks
     response_length_check,
     word_count_check,
     json_format_check,
-    
+
     # Regex patterns
     regex_pattern_match,
     email_format_check,
     url_format_check,
-    
+
     # Numeric thresholds
     confidence_threshold,
     latency_check,
-    
+
     # Domain-specific
     fraud_score_threshold,
     medical_disclaimer_check,
     positive_tone_check,
     professional_tone_check,
-    
+
     # Comprehensive
     comprehensive_quality_check,
-    
+
     # Factory
     create_custom_scorer
 )
@@ -58,11 +58,11 @@ from evaluation.custom_scorers import (
 
 def example_basic_rule_based():
     """Use rule-based scorers only (no LLM calls)."""
-    
+
     def my_agent(inputs: Dict[str, Any]) -> Dict[str, Any]:
         query = inputs.get("input", "")
         return {"response": f"Thank you for your question about {query}. I'm happy to help!"}
-    
+
     eval_data = [
         {
             "inputs": {
@@ -79,7 +79,7 @@ def example_basic_rule_based():
             }
         }
     ]
-    
+
     # Use only rule-based scorers (fast, no LLM costs!)
     results = evaluate(
         data=eval_data,
@@ -92,7 +92,7 @@ def example_basic_rule_based():
             professional_tone_check   # Professional tone
         ]
     )
-    
+
     print("✅ Evaluation complete (no LLM calls!)")
     return results
 
@@ -103,10 +103,10 @@ def example_basic_rule_based():
 
 def example_hybrid_scoring():
     """Combine fast rule-based checks with deep LLM evaluation."""
-    
+
     def my_agent(inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {"response": "I can help you with that."}
-    
+
     eval_data = [
         {
             "inputs": {
@@ -122,7 +122,7 @@ def example_hybrid_scoring():
             }
         }
     ]
-    
+
     # Combine both types of scorers
     results = evaluate(
         data=eval_data,
@@ -131,13 +131,13 @@ def example_hybrid_scoring():
             # Fast rule-based checks (run first, no cost)
             response_length_check,
             professional_tone_check,
-            
+
             # Deep LLM evaluation (run after basic checks pass)
             Correctness(),  # ← LLM-based (costs $)
             Safety()        # ← LLM-based (costs $)
         ]
     )
-    
+
     print("✅ Hybrid evaluation complete")
     return results
 
@@ -148,7 +148,7 @@ def example_hybrid_scoring():
 
 def example_fraud_detection():
     """Domain-specific: Fraud detection with business rules."""
-    
+
     def fraud_agent(inputs: Dict[str, Any]) -> Dict[str, Any]:
         # Your fraud detection logic
         return {
@@ -157,7 +157,7 @@ def example_fraud_detection():
             "action": "block",
             "confidence": 0.92
         }
-    
+
     eval_data = [
         {
             "inputs": {
@@ -175,7 +175,7 @@ def example_fraud_detection():
             }
         }
     ]
-    
+
     results = evaluate(
         data=eval_data,
         predict_fn=fraud_agent,
@@ -183,12 +183,12 @@ def example_fraud_detection():
             # Business logic validation
             fraud_score_threshold,  # Checks if score matches action
             confidence_threshold,   # Ensures confidence > 0.8
-            
+
             # LLM evaluation
             Correctness()
         ]
     )
-    
+
     print("✅ Fraud detection evaluation complete")
     return results
 
@@ -199,12 +199,12 @@ def example_fraud_detection():
 
 def example_compliance_check():
     """Check for required disclaimers in regulated domains."""
-    
+
     def medical_agent(inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "response": "For headaches, rest is helpful. However, please consult your physician for persistent symptoms."
         }
-    
+
     eval_data = [
         {
             "inputs": {"input": "What should I do for headaches?"},
@@ -216,7 +216,7 @@ def example_compliance_check():
             }
         }
     ]
-    
+
     results = evaluate(
         data=eval_data,
         predict_fn=medical_agent,
@@ -227,7 +227,7 @@ def example_compliance_check():
             Safety()
         ]
     )
-    
+
     print("✅ Compliance check complete")
     return results
 
@@ -238,12 +238,12 @@ def example_compliance_check():
 
 def example_format_validation():
     """Validate structured outputs (JSON, email, URL formats)."""
-    
+
     def structured_agent(inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "response": '{"status": "success", "email": "user@example.com", "url": "https://example.com"}'
         }
-    
+
     eval_data = [
         {
             "inputs": {"input": "Get user info"},
@@ -253,7 +253,7 @@ def example_format_validation():
             "expectations": {}
         }
     ]
-    
+
     results = evaluate(
         data=eval_data,
         predict_fn=structured_agent,
@@ -263,7 +263,7 @@ def example_format_validation():
             url_format_check     # ✅ Validates URL format (if present)
         ]
     )
-    
+
     print("✅ Format validation complete")
     return results
 
@@ -274,13 +274,13 @@ def example_format_validation():
 
 def example_performance_check():
     """Check if agent meets performance requirements."""
-    
+
     def fast_agent(inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "response": "Quick response",
             "latency_ms": 150
         }
-    
+
     eval_data = [
         {
             "inputs": {
@@ -294,7 +294,7 @@ def example_performance_check():
             "expectations": {}
         }
     ]
-    
+
     results = evaluate(
         data=eval_data,
         predict_fn=fast_agent,
@@ -303,7 +303,7 @@ def example_performance_check():
             response_length_check
         ]
     )
-    
+
     print("✅ Performance check complete")
     return results
 
@@ -314,7 +314,7 @@ def example_performance_check():
 
 def example_custom_scorer_factory():
     """Create your own custom scorers on the fly."""
-    
+
     # Define custom check logic
     def check_contains_apology(inputs, outputs, expectations):
         """Check if customer service response includes apology."""
@@ -322,32 +322,32 @@ def example_custom_scorer_factory():
         apology_words = ["sorry", "apologize", "regret", "unfortunately"]
         has_apology = any(word in response for word in apology_words)
         return "yes" if has_apology else "no"
-    
+
     def check_provides_next_steps(inputs, outputs, expectations):
         """Check if response provides clear next steps."""
         response = outputs.get("response", "").lower()
         action_words = ["will", "can", "next", "follow up", "contact", "send"]
         has_action = any(word in response for word in action_words)
         return "yes" if has_action else "no"
-    
+
     # Create scorers using factory
     apology_scorer = create_custom_scorer(
         name="contains_apology",
         check_function=check_contains_apology,
         description="Checks if customer service response includes apology"
     )
-    
+
     next_steps_scorer = create_custom_scorer(
         name="provides_next_steps",
         check_function=check_provides_next_steps,
         description="Checks if response provides actionable next steps"
     )
-    
+
     def support_agent(inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "response": "I apologize for the inconvenience. I will look into this and contact you within 24 hours."
         }
-    
+
     eval_data = [
         {
             "inputs": {"input": "My order is late"},
@@ -357,7 +357,7 @@ def example_custom_scorer_factory():
             "expectations": {}
         }
     ]
-    
+
     results = evaluate(
         data=eval_data,
         predict_fn=support_agent,
@@ -368,7 +368,7 @@ def example_custom_scorer_factory():
             professional_tone_check
         ]
     )
-    
+
     print("✅ Custom scorer evaluation complete")
     return results
 
@@ -379,12 +379,12 @@ def example_custom_scorer_factory():
 
 def example_quality_gate():
     """Use comprehensive check as a quality gate."""
-    
+
     def production_agent(inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "response": "Thank you for your question. I'm happy to provide information about our services."
         }
-    
+
     eval_data = [
         {
             "inputs": {"input": "Tell me about your services"},
@@ -396,23 +396,23 @@ def example_quality_gate():
             }
         }
     ]
-    
+
     results = evaluate(
         data=eval_data,
         predict_fn=production_agent,
         scorers=[
             # Single comprehensive check (combines multiple rules)
             comprehensive_quality_check,  # ✅ Length + tone + forbidden terms
-            
+
             # Additional specific checks
             positive_tone_check,
-            
+
             # Final LLM validation
             Correctness(),
             Safety()
         ]
     )
-    
+
     print("✅ Quality gate evaluation complete")
     return results
 
@@ -425,39 +425,39 @@ if __name__ == "__main__":
     print("="*80)
     print("Custom Scorers Examples (Rule-Based + LLM Hybrid)")
     print("="*80)
-    
+
     print("\n1. Basic Rule-Based Scoring (No LLM calls)")
     print("-" * 80)
     example_basic_rule_based()
-    
+
     print("\n2. Hybrid Scoring (Rule-Based + LLM)")
     print("-" * 80)
     example_hybrid_scoring()
-    
+
     print("\n3. Domain-Specific: Fraud Detection")
     print("-" * 80)
     example_fraud_detection()
-    
+
     print("\n4. Compliance Checking (Medical/Financial)")
     print("-" * 80)
     example_compliance_check()
-    
+
     print("\n5. Format Validation (JSON, Email, URL)")
     print("-" * 80)
     example_format_validation()
-    
+
     print("\n6. Performance Check (Latency)")
     print("-" * 80)
     example_performance_check()
-    
+
     print("\n7. Custom Scorer Factory")
     print("-" * 80)
     example_custom_scorer_factory()
-    
+
     print("\n8. Comprehensive Quality Gate")
     print("-" * 80)
     example_quality_gate()
-    
+
     print("\n" + "="*80)
     print("✅ All examples complete!")
     print("\n💡 Key Takeaway:")
@@ -465,4 +465,3 @@ if __name__ == "__main__":
     print("   - LLM scorers: Deep understanding, semantic evaluation")
     print("   - Best practice: Use both! Rule-based for gates, LLM for quality")
     print("="*80)
-

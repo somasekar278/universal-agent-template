@@ -17,4 +17,3 @@ class MetricsCollector:
     """Metrics collector (see telemetry/metrics.py for full implementation)"""
     def record_latency(self, name: str, value: float):
         pass
-

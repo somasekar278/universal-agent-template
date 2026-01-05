@@ -8,7 +8,7 @@ from .manager import MemoryEntry, MemoryImportance
 
 class ForgettingPolicy(ABC):
     """Base forgetting policy."""
-    
+
     @abstractmethod
     async def should_forget(self, memory: MemoryEntry) -> bool:
         """Determine if memory should be forgotten."""
@@ -17,10 +17,10 @@ class ForgettingPolicy(ABC):
 
 class TimeBasedForgetting(ForgettingPolicy):
     """Forget memories based on age."""
-    
+
     def __init__(self, max_age_days: int = 30):
         self.max_age_days = max_age_days
-    
+
     async def should_forget(self, memory: MemoryEntry) -> bool:
         age = datetime.now() - memory.metadata.created_at
         return age > timedelta(days=self.max_age_days)
@@ -28,10 +28,10 @@ class TimeBasedForgetting(ForgettingPolicy):
 
 class ImportanceBasedForgetting(ForgettingPolicy):
     """Forget low-importance memories."""
-    
+
     def __init__(self, min_importance: MemoryImportance = MemoryImportance.LOW):
         self.min_importance = min_importance
-    
+
     async def should_forget(self, memory: MemoryEntry) -> bool:
         importance_order = {
             MemoryImportance.CRITICAL: 5,
@@ -45,10 +45,10 @@ class ImportanceBasedForgetting(ForgettingPolicy):
 
 class CapacityBasedForgetting(ForgettingPolicy):
     """Forget when capacity is exceeded."""
-    
+
     def __init__(self, capacity_threshold: float = 0.9):
         self.capacity_threshold = capacity_threshold
-    
+
     async def should_forget(self, memory: MemoryEntry) -> bool:
         # This would need access to store capacity
         return False
@@ -56,8 +56,7 @@ class CapacityBasedForgetting(ForgettingPolicy):
 
 class RelevanceBasedForgetting(ForgettingPolicy):
     """Forget based on relevance to current context."""
-    
+
     async def should_forget(self, memory: MemoryEntry) -> bool:
         # Would analyze relevance - stub for now
         return memory.metadata.access_count == 0
-

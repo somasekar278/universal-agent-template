@@ -22,7 +22,7 @@ This separation ensures optimal performance, cost efficiency, and maintainabilit
   - Simple chatbot (L1)
   - Context-aware assistant (L2)
   - Interactive web interface for users
-  
+
 - **L3-L5 Agents** (FastAPI-based REST API)
   - Production API (L3)
   - Complex workflows (L4)
@@ -58,17 +58,17 @@ This separation ensures optimal performance, cost efficiency, and maintainabilit
   - DSPy optimization (task prompts)
   - TextGrad optimization (system prompts)
   - Runs nightly/weekly on schedule
-  
+
 - **Batch Evaluation**
   - MLflow GenAI Evaluation
   - Process 100s-1000s of test cases
   - Generate evaluation reports
-  
+
 - **Dataset Curation**
   - Prepare training datasets
   - Clean and label traces
   - Sample representative data
-  
+
 - **Monitoring & Reporting**
   - Aggregate performance metrics
   - Generate dashboards
@@ -411,4 +411,3 @@ App Service Principal needs access to:
 - **Deploy Your First Agent:** See [Deployment Guide](DEPLOYMENT_GUIDE.md)
 - **Set Up Optimization:** See [Evaluation Guide](EVALUATION_GUIDE.md)
 - **Configure Monitoring:** See [Observability Guide](OBSERVABILITY_GUIDE.md)
-

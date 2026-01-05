@@ -329,8 +329,8 @@ Databricks Agent Toolkit (Integrations Layer)
 Databricks Services (Model Serving, UC, Lakebase, MCP, etc.)
 ```
 
-**You own:** Agent logic, workflows, business rules  
-**Toolkit provides:** Easy access to all Databricks services  
+**You own:** Agent logic, workflows, business rules
+**Toolkit provides:** Easy access to all Databricks services
 **Databricks provides:** Infrastructure, services, deployment
 
 ---
@@ -339,7 +339,7 @@ Databricks Services (Model Serving, UC, Lakebase, MCP, etc.)
 
 > **"Build ON TOP OF existing platforms, not INSTEAD OF"**
 
-We don't replace LangGraph or LangChain.  
+We don't replace LangGraph or LangChain.
 We make Databricks services easy to use with them.
 
 ---

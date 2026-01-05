@@ -82,7 +82,7 @@ print("✅ Initialization complete")
 def create_agent_api() -> FastAPI:
     """
     Create main agent execution API.
-    
+
     Endpoints:
     - POST /execute - Execute an agent
     - GET /health - Health check
@@ -94,7 +94,7 @@ def create_agent_api() -> FastAPI:
         description="Production agent deployment on Databricks",
         version="1.0.0"
     )
-    
+
     @app.get("/health")
     async def health_check():
         """Health check endpoint."""
@@ -104,12 +104,12 @@ def create_agent_api() -> FastAPI:
             "model_serving": config["model_serving"]["default_endpoint"],
             "memory_index": config["unity_catalog"]["vector_index"]
         }
-    
+
     @app.post("/execute")
     async def execute_agent(request: Dict[str, Any]):
         """
         Execute an agent.
-        
+
         Request:
         {
             "agent_name": "fraud_detector",
@@ -121,20 +121,20 @@ def create_agent_api() -> FastAPI:
             agent_name = request.get("agent_name")
             data = request.get("data", {})
             metadata = request.get("metadata", {})
-            
+
             if not agent_name:
                 raise HTTPException(status_code=400, detail="agent_name is required")
-            
+
             # Create agent input
             agent_input = AgentInput(
                 agent_id=agent_name,
                 data=data,
                 metadata=metadata
             )
-            
+
             # Execute via router
             result = await router.execute(agent_name, agent_input)
-            
+
             return {
                 "success": True,
                 "agent": agent_name,
@@ -142,7 +142,7 @@ def create_agent_api() -> FastAPI:
                 "confidence": result.confidence,
                 "metadata": result.metadata
             }
-            
+
         except Exception as e:
             return JSONResponse(
                 status_code=500,
@@ -151,7 +151,7 @@ def create_agent_api() -> FastAPI:
                     "error": str(e)
                 }
             )
-    
+
     @app.get("/agents")
     async def list_agents():
         """List all available agents."""
@@ -159,13 +159,13 @@ def create_agent_api() -> FastAPI:
             "agents": router.list_agents(),
             "count": len(router.list_agents())
         }
-    
+
     @app.get("/metrics")
     async def get_metrics():
         """Prometheus metrics endpoint."""
         # TODO: Export Prometheus metrics
         return {"status": "ok"}
-    
+
     return app
 
 # ============================================================================
@@ -175,24 +175,24 @@ def create_agent_api() -> FastAPI:
 def create_a2a_server() -> FastAPI:
     """
     Create A2A (Agent-to-Agent) communication server.
-    
+
     Implements the official Agent2Agent Protocol:
     - JSON-RPC 2.0 endpoint
     - Agent discovery
     - Peer-to-peer communication
-    
+
     Endpoints:
     - POST /a2a/rpc - JSON-RPC 2.0 endpoint
     - GET /a2a/discover - Agent discovery
     - GET /a2a/card/{agent_id} - Get agent card
     """
     from agents.a2a.server import A2AServer
-    
+
     a2a_server = A2AServer(
         router=router,
         workspace_client=w
     )
-    
+
     return a2a_server.create_app()
 
 # ============================================================================
@@ -202,9 +202,9 @@ def create_a2a_server() -> FastAPI:
 def create_mcp_server() -> FastAPI:
     """
     Create MCP (Model Context Protocol) server.
-    
+
     Provides standardized tool and resource interfaces.
-    
+
     Endpoints:
     - GET /mcp/tools - List available tools
     - POST /mcp/tools/{tool_name} - Execute tool
@@ -212,12 +212,12 @@ def create_mcp_server() -> FastAPI:
     - GET /mcp/resources/{resource_id} - Get resource
     """
     from agents.mcp_server import MCPServer
-    
+
     mcp_server = MCPServer(
         router=router,
         workspace_client=w
     )
-    
+
     return mcp_server.create_app()
 
 # ============================================================================
@@ -227,7 +227,7 @@ def create_mcp_server() -> FastAPI:
 def create_combined_app() -> FastAPI:
     """
     Create combined app with all services on a single port.
-    
+
     Routes:
     - /api/* - Main agent API
     - /a2a/* - A2A transport layer
@@ -237,12 +237,12 @@ def create_combined_app() -> FastAPI:
         title="Agent Framework - Combined",
         description="All services in one app"
     )
-    
+
     # Mount sub-applications
     app.mount("/api", create_agent_api())
     app.mount("/a2a", create_a2a_server())
     app.mount("/mcp", create_mcp_server())
-    
+
     @app.get("/")
     async def root():
         return {
@@ -253,7 +253,7 @@ def create_combined_app() -> FastAPI:
                 "mcp_server": "/mcp"
             }
         }
-    
+
     return app
 
 # ============================================================================
@@ -262,19 +262,19 @@ def create_combined_app() -> FastAPI:
 
 if __name__ == "__main__":
     import os
-    
+
     deployment_mode = os.getenv("DEPLOYMENT_MODE", "combined")
-    
+
     if deployment_mode == "combined":
         # Single port deployment (recommended for Databricks Apps)
         print("🚀 Starting combined app on port 8000")
         app = create_combined_app()
         uvicorn.run(app, host="0.0.0.0", port=8000)
-        
+
     elif deployment_mode == "multi-port":
         # Multi-port deployment (separate services)
         print("🚀 Starting multi-port deployment")
-        
+
         processes = [
             Process(
                 target=lambda: uvicorn.run(
@@ -298,14 +298,13 @@ if __name__ == "__main__":
                 )
             )
         ]
-        
+
         for p in processes:
             p.start()
-        
+
         for p in processes:
             p.join()
-    
+
     else:
         print(f"❌ Unknown deployment mode: {deployment_mode}")
         print("Valid modes: 'combined', 'multi-port'")
-

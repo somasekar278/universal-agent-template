@@ -167,7 +167,7 @@ def create_example_agent_input() -> AgentInput:
 def create_example_agent_output() -> AgentOutput:
     """Create example agent output with reasoning trace."""
     start_time = datetime.utcnow() - timedelta(milliseconds=245)
-    
+
     # Example tool calls
     tool_call_1 = ToolCall(
         tool_id="call_001",
@@ -176,7 +176,7 @@ def create_example_agent_output() -> AgentOutput:
         arguments={"merchant_id": "mch_electronics_uk"},
         called_at=start_time + timedelta(milliseconds=10),
     )
-    
+
     tool_result_1 = ToolResult(
         tool_call_id="call_001",
         success=True,
@@ -184,7 +184,7 @@ def create_example_agent_output() -> AgentOutput:
         latency_ms=42.5,
         completed_at=start_time + timedelta(milliseconds=52.5),
     )
-    
+
     tool_call_2 = ToolCall(
         tool_id="call_002",
         tool_name="velocity_check",
@@ -192,7 +192,7 @@ def create_example_agent_output() -> AgentOutput:
         arguments={"customer_id": "cust_new_user_123", "time_window": "1h"},
         called_at=start_time + timedelta(milliseconds=60),
     )
-    
+
     tool_result_2 = ToolResult(
         tool_call_id="call_002",
         success=True,
@@ -200,7 +200,7 @@ def create_example_agent_output() -> AgentOutput:
         latency_ms=38.2,
         completed_at=start_time + timedelta(milliseconds=98.2),
     )
-    
+
     # Reasoning steps
     reasoning_steps = [
         ReasoningStep(
@@ -233,7 +233,7 @@ def create_example_agent_output() -> AgentOutput:
             timestamp=start_time + timedelta(milliseconds=220),
         ),
     ]
-    
+
     return AgentOutput(
         request_id="req_example_001",
         agent_id="agent_narrative_ephemeral_42",
@@ -267,7 +267,7 @@ def demo_full_flow():
     print("=" * 80)
     print("FRAUD DETECTION AGENT - EXAMPLE FLOW")
     print("=" * 80)
-    
+
     # Create agent input
     agent_input = create_example_agent_input()
     print("\n📥 AGENT INPUT")
@@ -276,7 +276,7 @@ def demo_full_flow():
     print(f"ML Risk Score: {agent_input.transaction.ml_risk_score:.2f}")
     print(f"Fraud Signals: {len(agent_input.fraud_signals.rules_triggered)} rules triggered")
     print(f"Rules: {', '.join(agent_input.fraud_signals.rules_triggered)}")
-    
+
     # Create agent output
     agent_output = create_example_agent_output()
     print("\n📤 AGENT OUTPUT")
@@ -288,7 +288,7 @@ def demo_full_flow():
     print(f"Tools Used: {', '.join(agent_output.tools_called)}")
     print(f"\n📝 RISK NARRATIVE:")
     print(agent_output.risk_narrative)
-    
+
     print("\n🔍 REASONING TRACE:")
     for step in agent_output.reasoning_steps:
         print(f"\nStep {step.step_number}:")
@@ -297,7 +297,7 @@ def demo_full_flow():
             print(f"  Tool: {step.tool_call.tool_name} (server: {step.tool_call.tool_server})")
         if step.tool_result:
             print(f"  Result: Success={step.tool_result.success}, Latency={step.tool_result.latency_ms:.1f}ms")
-    
+
     print("\n" + "=" * 80)
     print("✅ FLOW COMPLETE - Ready for MLflow logging and Zerobus telemetry")
     print("=" * 80)
@@ -305,4 +305,3 @@ def demo_full_flow():
 
 if __name__ == "__main__":
     demo_full_flow()
-

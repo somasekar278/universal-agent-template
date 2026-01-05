@@ -8,12 +8,12 @@
 resources:
   - name: my-agent-app
     description: "Agent application"
-    
+
     runtime:
       kind: container
       image: "your-registry/my-agent-app:latest"  # UPDATE THIS
       command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-      
+
       env:
         # Databricks credentials
         - name: DATABRICKS_HOST
@@ -22,22 +22,22 @@ resources:
         - name: DATABRICKS_TOKEN
           valueFrom:
             secretRef: databricks-token
-        
+
         # MLflow tracking
         - name: MLFLOW_TRACKING_URI
           value: "databricks"
         - name: MLFLOW_EXPERIMENT_NAME
           value: "/agents/my-agent"
-        
+
         # Your agent config
         - name: AGENT_CONFIG_PATH
           value: "config/agent_config.yaml"
-      
+
       ports:
         - name: http
           containerPort: 8000
           protocol: TCP
-      
+
       # Resource limits
       resources:
         requests:
@@ -46,7 +46,7 @@ resources:
         limits:
           cpu: "2"
           memory: "8Gi"
-    
+
     # Health check
     health:
       httpPath: /health
@@ -54,7 +54,7 @@ resources:
       intervalSeconds: 30
       timeoutSeconds: 10
       unhealthyThreshold: 3
-    
+
     # Auto-scaling
     autoscaling:
       enabled: true
@@ -69,19 +69,18 @@ resources:
               averageUtilization: 70
 
 # Example FastAPI app structure:
-# 
+#
 # main.py:
 #   from fastapi import FastAPI
 #   from mcp import McpClient  # If using MCP
-#   
+#
 #   app = FastAPI()
-#   
+#
 #   @app.get("/health")
 #   async def health():
 #       return {"status": "healthy"}
-#   
+#
 #   @app.post("/agent/chat")
 #   async def chat(query: str):
 #       # Your agent logic
 #       return {"response": "..."}
-

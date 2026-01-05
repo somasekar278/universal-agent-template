@@ -44,54 +44,54 @@ class OptimizationResult:
 class DSPyOptimizer:
     """
     DSPy-powered prompt optimizer.
-    
+
     Optimizes task prompts using DSPy's optimization algorithms.
-    
+
     Usage:
         optimizer = DSPyOptimizer()
-        
+
         # Define training data
         training_data = [
             {"input": "...", "output": "..."},
             {"input": "...", "output": "..."},
         ]
-        
+
         # Define evaluation metric
         def accuracy_metric(example, prediction):
             return example.output == prediction.output
-        
+
         # Optimize
         result = optimizer.optimize(
             task="fraud_detection",
             training_data=training_data,
             metric=accuracy_metric
         )
-        
+
         # Use optimized prompt
         print(result.optimized_prompt)
         print(f"Improvement: {result.improvement:.2%}")
     """
-    
+
     def __init__(self, config: Optional[DSPyConfig] = None):
         """
         Initialize DSPy optimizer.
-        
+
         Args:
             config: DSPy configuration (loads from YAML if None)
         """
         if config is None:
             config = self._load_config_from_yaml()
-        
+
         self.config = config
         self._dspy_available = self._check_dspy()
         self._compiled_programs = {}
-    
+
     def _load_config_from_yaml(self) -> DSPyConfig:
         """Load configuration from YAML."""
         try:
             from shared.config_loader import get_config
             config = get_config()
-            
+
             return DSPyConfig(
                 metric=config.get_str("optimization.dspy.metric", "accuracy"),
                 num_threads=config.get_int("optimization.dspy.num_threads", 4),
@@ -104,7 +104,7 @@ class DSPyOptimizer:
             )
         except:
             return DSPyConfig()
-    
+
     def _check_dspy(self) -> bool:
         """Check if DSPy is available."""
         try:
@@ -113,7 +113,7 @@ class DSPyOptimizer:
         except ImportError:
             print("⚠️  DSPy not installed. Run: pip install sota-agent-framework[optimization]")
             return False
-    
+
     async def optimize(
         self,
         task: str,
@@ -123,47 +123,47 @@ class DSPyOptimizer:
     ) -> OptimizationResult:
         """
         Optimize prompt for a task using DSPy.
-        
+
         Args:
             task: Task name/description
             training_data: Training examples
             metric: Evaluation metric function
             dev_data: Development/validation data
-            
+
         Returns:
             OptimizationResult with optimized prompt
         """
         if not self._dspy_available:
             # Fallback to simple optimization
             return await self._fallback_optimize(task, training_data)
-        
+
         try:
             import dspy
             from dspy.teleprompt import BootstrapFewShot
-            
+
             # Configure DSPy
             lm = dspy.OpenAI(
                 model=self.config.teacher_model,
                 temperature=self.config.temperature
             )
             dspy.settings.configure(lm=lm)
-            
+
             # Create signature
             signature = self._create_signature(task, training_data[0])
-            
+
             # Create program
             program = dspy.ChainOfThought(signature)
-            
+
             # Prepare data
             trainset = [
                 dspy.Example(**ex).with_inputs("input")
                 for ex in training_data
             ]
-            
+
             # Use provided metric or default
             if metric is None:
                 metric = self._default_metric
-            
+
             # Optimize with BootstrapFewShot
             optimizer = BootstrapFewShot(
                 metric=metric,
@@ -171,20 +171,20 @@ class DSPyOptimizer:
                 max_labeled_demos=self.config.max_labeled_demos,
                 num_threads=self.config.num_threads
             )
-            
+
             # Compile
             compiled_program = optimizer.compile(program, trainset=trainset)
-            
+
             # Evaluate
             original_score = self._evaluate(program, trainset, metric)
             optimized_score = self._evaluate(compiled_program, trainset, metric)
-            
+
             # Extract optimized prompt
             optimized_prompt = self._extract_prompt(compiled_program)
-            
+
             # Store compiled program
             self._compiled_programs[task] = compiled_program
-            
+
             return OptimizationResult(
                 optimized_prompt=optimized_prompt,
                 original_score=original_score,
@@ -198,24 +198,24 @@ class DSPyOptimizer:
                     "config": vars(self.config)
                 }
             )
-            
+
         except Exception as e:
             print(f"⚠️  DSPy optimization failed: {e}")
             return await self._fallback_optimize(task, training_data)
-    
+
     def _create_signature(self, task: str, example: Dict[str, Any]) -> str:
         """Create DSPy signature from task and example."""
         input_keys = [k for k in example.keys() if k != "output"]
-        
+
         # Simple signature
         return f"{', '.join(input_keys)} -> output"
-    
+
     def _default_metric(self, example, prediction, trace=None) -> float:
         """Default evaluation metric."""
         if hasattr(prediction, 'output') and hasattr(example, 'output'):
             return float(prediction.output == example.output)
         return 0.0
-    
+
     def _evaluate(self, program, dataset, metric) -> float:
         """Evaluate program on dataset."""
         scores = []
@@ -226,16 +226,16 @@ class DSPyOptimizer:
                 scores.append(score)
             except:
                 scores.append(0.0)
-        
+
         return sum(scores) / len(scores) if scores else 0.0
-    
+
     def _extract_prompt(self, program) -> str:
         """Extract prompt from compiled program."""
         # DSPy programs contain optimized prompts
         if hasattr(program, 'predict') and hasattr(program.predict, 'extended_signature'):
             return str(program.predict.extended_signature)
         return "Optimized prompt (internal DSPy representation)"
-    
+
     def _get_best_examples(self, program) -> List[Dict[str, Any]]:
         """Get best few-shot examples from compiled program."""
         if hasattr(program, 'predict') and hasattr(program.predict, 'demos'):
@@ -244,7 +244,7 @@ class DSPyOptimizer:
                 for demo in program.predict.demos
             ]
         return []
-    
+
     async def _fallback_optimize(
         self,
         task: str,
@@ -253,13 +253,13 @@ class DSPyOptimizer:
         """Fallback optimization without DSPy."""
         # Simple few-shot selection
         best_examples = training_data[:4] if len(training_data) >= 4 else training_data
-        
+
         # Generate prompt
         prompt = f"Task: {task}\n\nExamples:\n"
         for ex in best_examples:
             prompt += f"Input: {ex.get('input', '')}\n"
             prompt += f"Output: {ex.get('output', '')}\n\n"
-        
+
         return OptimizationResult(
             optimized_prompt=prompt,
             original_score=0.5,
@@ -269,18 +269,18 @@ class DSPyOptimizer:
             best_examples=best_examples,
             metadata={"method": "fallback", "note": "DSPy not available"}
         )
-    
+
     def get_compiled_program(self, task: str):
         """Get compiled DSPy program for a task."""
         return self._compiled_programs.get(task)
-    
+
     def save_optimization(self, task: str, path: str):
         """Save optimized program to disk."""
         if task in self._compiled_programs:
             import dspy
             self._compiled_programs[task].save(path)
             print(f"✅ Saved optimized program to {path}")
-    
+
     def load_optimization(self, task: str, path: str):
         """Load optimized program from disk."""
         try:
@@ -292,4 +292,3 @@ class DSPyOptimizer:
         except Exception as e:
             print(f"⚠️  Failed to load: {e}")
             return None
-

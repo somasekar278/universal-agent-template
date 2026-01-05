@@ -4,12 +4,16 @@ Databricks Agent Toolkit - Main CLI
 Main command-line interface for the toolkit.
 """
 
-import sys
 import argparse
+import sys
+
+# Import version from parent module
+from databricks_agent_toolkit import __version__
 
 # Try to import check_authentication, but make it optional
 try:
     from databricks_agent_toolkit.integrations import check_authentication
+
     _HAS_DATABRICKS = True
 except ImportError:
     _HAS_DATABRICKS = False
@@ -17,16 +21,18 @@ except ImportError:
 
 def print_banner():
     """Print toolkit banner."""
-    print("""
+    print(
+        """
     ╔═══════════════════════════════════════════════════════════╗
     ║                                                           ║
-    ║       Databricks Agent Toolkit v0.1.2                    ║
+    ║       Databricks Agent Toolkit v{__version__}                   ║
     ║                                                           ║
     ║       Pre-wired Databricks integrations for              ║
     ║       building production agents                          ║
     ║                                                           ║
     ╚═══════════════════════════════════════════════════════════╝
-    """)
+    """
+    )
 
 
 def main():
@@ -38,60 +44,44 @@ def main():
 Examples:
   # Check authentication
   databricks-agent-toolkit auth check
-  
+
   # Generate chatbot (L1 - Simple)
   databricks-agent-toolkit generate chatbot my-bot
-  
+
   # Generate assistant (L2 - With Memory)
   databricks-agent-toolkit generate assistant my-assistant
-  
+
   # Get help on specific commands
   databricks-agent-toolkit generate --help
-  
+
 More scaffolds (api, workflow, system) coming in future releases!
 For more info: https://github.com/databricks/databricks-agent-toolkit
-        """
+        """,
     )
-    
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="databricks-agent-toolkit 0.1.2"
-    )
-    
+
+    parser.add_argument("--version", action="version", version=f"databricks-agent-toolkit {__version__}")
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    
+
     # Auth command
     auth_parser = subparsers.add_parser("auth", help="Check Databricks authentication")
-    auth_parser.add_argument(
-        "action",
-        choices=["check"],
-        help="Authentication action"
-    )
-    
+    auth_parser.add_argument("action", choices=["check"], help="Authentication action")
+
     # Generate command (placeholder)
-    generate_parser = subparsers.add_parser(
-        "generate",
-        help="Generate agent scaffolds"
-    )
+    generate_parser = subparsers.add_parser("generate", help="Generate agent scaffolds")
     generate_parser.add_argument(
-        "level",
-        choices=["chatbot", "assistant", "api", "workflow", "system"],
-        help="Agent type to generate"
+        "level", choices=["chatbot", "assistant", "api", "workflow", "system"], help="Agent type to generate"
     )
-    generate_parser.add_argument(
-        "name",
-        help="Agent name"
-    )
-    
+    generate_parser.add_argument("name", help="Agent name")
+
     # Parse arguments
     args = parser.parse_args()
-    
+
     if not args.command:
         print_banner()
         parser.print_help()
         return
-    
+
     # Handle commands
     if args.command == "auth":
         handle_auth(args)
@@ -107,13 +97,13 @@ def handle_auth(args):
         print("❌ Databricks integrations not available")
         print("   Install with: pip install databricks-agent-toolkit[databricks]")
         sys.exit(1)
-    
+
     if args.action == "check":
         print("🔐 Checking Databricks authentication...\n")
         status = check_authentication()
-        
+
         if status["authenticated"]:
-            print(f"✅ Authenticated successfully!")
+            print("✅ Authenticated successfully!")
             print(f"   Host: {status['host']}")
             print(f"   User: {status['user']}")
         else:
@@ -125,16 +115,16 @@ def handle_generate(args):
     """Handle generate commands."""
     # Import here to avoid circular dependency
     from databricks_agent_toolkit.scaffolds import ScaffoldGenerator
-    
+
     print(f"\n🚀 Generating {args.level} scaffold: {args.name}")
-    
+
     try:
         generator = ScaffoldGenerator()
         generator.generate(
             level=args.level,
             name=args.name,
             output_dir=f"./{args.name}",
-            options={"model": "databricks-claude-sonnet-4-5"}
+            options={"model": "databricks-claude-sonnet-4-5"},
         )
         print(f"\n✅ Generated successfully! See ./{args.name}/README.md")
     except Exception as e:
@@ -143,4 +133,3 @@ def handle_generate(args):
 
 if __name__ == "__main__":
     main()
-

@@ -101,7 +101,7 @@ echo ""
 if [ "$FULL_TESTS" = true ]; then
     echo "🚀 Step 4: Full E2E Tests (with Model Serving)"
     echo "-----------------------------------------------"
-    
+
     if [ -z "$DATABRICKS_HOST" ]; then
         echo -e "${YELLOW}⚠${NC}  Skipping: DATABRICKS_HOST not set"
         echo "   Set credentials to run full tests:"
@@ -130,4 +130,3 @@ echo "Quick commands:"
 echo "  • Run full tests: ./scripts/run_tests.sh --full"
 echo "  • Run specific test: pytest tests/test_e2e_chatbot.py::TestClassName::test_name -v"
 echo ""
-

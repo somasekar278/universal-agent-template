@@ -121,7 +121,7 @@ def test_chatbot_generation():
     """Test chatbot scaffold generates correctly."""
     generator = ScaffoldGenerator()
     generator.generate('chatbot', 'test-bot', '/tmp/test', {})
-    
+
     # Verify files exist
     assert Path('/tmp/test/app.py').exists()
     assert Path('/tmp/test/chatbot.py').exists()
@@ -212,4 +212,3 @@ python3 scripts/check_template_size.py
 ---
 
 **Remember**: Every code change should include tests and maintain our optimization standards! 🚀
-

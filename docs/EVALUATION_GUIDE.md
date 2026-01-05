@@ -164,9 +164,9 @@ def exact_match(
     """Check if response exactly matches expected"""
     response = outputs.get("response", "") if isinstance(outputs, dict) else str(outputs)
     expected = expectations.get("expected_response", "")
-    
+
     matches = response.strip() == expected.strip()
-    
+
     return Feedback(
         value="yes" if matches else "no",
         rationale=f"Response {'matches' if matches else 'does not match'} expected output"
@@ -201,7 +201,7 @@ def my_custom_scorer(
 ) -> Feedback:
     """
     Your scorer logic.
-    
+
     Returns:
         Feedback with value and rationale
     """
@@ -227,10 +227,10 @@ def contains_keywords(
     """Check if response contains required keywords"""
     response = outputs.get("response", "") if isinstance(outputs, dict) else str(outputs)
     keywords = expectations.get("required_keywords", [])
-    
+
     found = [kw for kw in keywords if kw.lower() in response.lower()]
     all_found = len(found) == len(keywords)
-    
+
     return Feedback(
         value="yes" if all_found else "no",
         rationale=f"Found {len(found)}/{len(keywords)} required keywords: {found}"
@@ -252,10 +252,10 @@ def latency_check(
         latency = trace.execution_time_ms
     else:
         latency = outputs.get("latency_ms", 0) if isinstance(outputs, dict) else 0
-    
+
     threshold = expectations.get("max_latency_ms", 1000)
     within_threshold = latency <= threshold
-    
+
     return Feedback(
         value="yes" if within_threshold else "no",
         rationale=f"Latency {latency}ms {'<=' if within_threshold else '>'} threshold {threshold}ms"
@@ -389,17 +389,17 @@ optimization:
     fraud_detector:
       enabled: true
       dataset: "main.agents.fraud_training_data"
-      
+
       dspy:
         enabled: true
         optimizer: "BootstrapFewShot"
         max_demos: 5
-        
+
       textgrad:
         enabled: true
         iterations: 10
         learning_rate: 0.1
-      
+
       save_to_uc: true
       uc_path: "main.agents.optimized_prompts"
 ```
@@ -446,26 +446,26 @@ async with McpClient() as client:
         "check_performance",
         {"agent_id": "fraud_detector"}
     )
-    
+
     if perf["status"] == "degraded":
         # Trigger optimization
         opt_result = await client.call_databricks_tool(
             "trigger_optimization",
             {"agent_id": "fraud_detector"}
         )
-        
+
         opt_id = opt_result["optimization_id"]
-        
+
         # Monitor optimization status
         while True:
             status = await client.call_databricks_tool(
                 "check_optimization_status",
                 {"optimization_id": opt_id}
             )
-            
+
             if status["status"] in ["completed", "failed"]:
                 break
-            
+
             await asyncio.sleep(30)
 ```
 
@@ -477,7 +477,7 @@ Configure in `config/agent_config.yaml`:
 self_improvement_service:
   enabled: true
   check_interval_seconds: 300  # Check every 5 minutes
-  
+
   agents:
     fraud_detector:
       enabled: true
@@ -486,7 +486,7 @@ self_improvement_service:
         error_rate: 0.03
         latency: 1.0
       cooldown_hours: 24
-      
+
       optimization:
         config_path: "config/optimization/fraud_detector.yaml"
 ```
@@ -576,11 +576,11 @@ result = evaluate(
         # Built-in
         Correctness(),
         Safety(),
-        
+
         # Custom code-based
         latency_check,
         forbidden_terms,
-        
+
         # Custom LLM judge
         empathy_judge
     ]
@@ -605,4 +605,3 @@ result = evaluate(
 ---
 
 **Remember: Build ON TOP OF MLflow 3, not INSTEAD OF MLflow 3.**
-

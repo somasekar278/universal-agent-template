@@ -10,7 +10,7 @@ Prerequisites:
 
 Usage:
     python examples/mcp_basic_usage.py
-    
+
 Note:
     This example shows the API structure. To actually run MCP servers,
     you need to configure and start your MCP server processes.
@@ -32,22 +32,22 @@ except ImportError:
 class DataEnrichmentAgent(Agent):
     """
     Agent that enriches data using MCP servers.
-    
+
     This example shows how to:
     1. Initialize MCP client
     2. Call MCP tools
     3. Handle MCP responses
     4. Gracefully fallback if MCP unavailable
     """
-    
+
     agent_type = AgentType.ENRICHMENT
     execution_priority = ExecutionPriority.NORMAL
     timeout_seconds = 30
-    
+
     def __init__(self, config: dict = None):
         super().__init__(config)
         self.mcp_enabled = MCP_AVAILABLE
-        
+
         if self.mcp_enabled:
             # Initialize MCP client with configuration
             self.mcp_client = AgentMCPClient.from_config()
@@ -55,16 +55,16 @@ class DataEnrichmentAgent(Agent):
         else:
             self.mcp_client = None
             print("ℹ️  Running without MCP")
-    
+
     async def initialize(self) -> None:
         """Initialize agent resources."""
         await super().initialize()
         print(f"🚀 {self.name} initialized")
-    
+
     async def execute(self, input_data: AgentInput) -> AgentOutput:
         """
         Execute enrichment with MCP tools.
-        
+
         If MCP is available, enriches data using external tools.
         Otherwise, returns basic processing.
         """
@@ -73,17 +73,17 @@ class DataEnrichmentAgent(Agent):
             "agent": self.name,
             "mcp_enabled": self.mcp_enabled
         }
-        
+
         if self.mcp_enabled and self.mcp_client:
             try:
                 # Example 1: Query Databricks SQL
                 sql_result = await self._query_data(input_data)
                 result["sql_enrichment"] = sql_result
-                
+
                 # Example 2: Call enrichment service
                 enrichment_result = await self._enrich_data(input_data)
                 result["external_enrichment"] = enrichment_result
-                
+
             except Exception as e:
                 print(f"⚠️  MCP call failed: {e}")
                 result["error"] = str(e)
@@ -92,7 +92,7 @@ class DataEnrichmentAgent(Agent):
             # Fallback: basic processing without MCP
             result["processing"] = "local"
             result["data"] = input_data.request_data
-        
+
         return AgentOutput(
             agent_name=self.name,
             result=result,
@@ -102,12 +102,12 @@ class DataEnrichmentAgent(Agent):
                 "execution_time_ms": 150
             }
         )
-    
+
     async def _query_data(self, input_data: AgentInput) -> dict:
         """Query data using Databricks SQL MCP server."""
         if not self.mcp_client:
             return {}
-        
+
         try:
             # Call MCP Databricks SQL server
             result = await self.mcp_client.call_databricks_sql(
@@ -122,16 +122,16 @@ class DataEnrichmentAgent(Agent):
         except Exception as e:
             print(f"⚠️  SQL query failed: {e}")
             return {"error": str(e)}
-    
+
     async def _enrich_data(self, input_data: AgentInput) -> dict:
         """Enrich data using external enrichment MCP server."""
         if not self.mcp_client:
             return {}
-        
+
         try:
             # Example: BIN lookup for credit card
             bin_number = input_data.request_data.get("card_bin", "559021")
-            
+
             result = await self.mcp_client.call_enrichment(
                 "lookup_bin",
                 {
@@ -147,7 +147,7 @@ class DataEnrichmentAgent(Agent):
         except Exception as e:
             print(f"⚠️  Enrichment failed: {e}")
             return {"error": str(e)}
-    
+
     async def cleanup(self) -> None:
         """Cleanup agent resources."""
         await super().cleanup()
@@ -160,23 +160,23 @@ class MCPAwareOrchestrator(Agent):
     """
     Orchestrator that coordinates multiple MCP-enabled agents.
     """
-    
+
     agent_type = AgentType.ORCHESTRATION
     execution_priority = ExecutionPriority.HIGH
-    
+
     def __init__(self, config: dict = None):
         super().__init__(config)
         self.enrichment_agent = DataEnrichmentAgent({"name": "enrichment_1"})
-    
+
     async def execute(self, input_data: AgentInput) -> AgentOutput:
         """Orchestrate multiple MCP calls."""
-        
+
         # Initialize sub-agent
         await self.enrichment_agent.initialize()
-        
+
         # Execute enrichment
         enrichment_result = await self.enrichment_agent.execute(input_data)
-        
+
         # Aggregate results
         result = {
             "orchestration": "complete",
@@ -184,10 +184,10 @@ class MCPAwareOrchestrator(Agent):
             "mcp_enabled": enrichment_result.result.get("mcp_enabled"),
             "confidence": enrichment_result.confidence_score
         }
-        
+
         # Cleanup
         await self.enrichment_agent.cleanup()
-        
+
         return AgentOutput(
             agent_name=self.name,
             result=result,
@@ -198,19 +198,19 @@ class MCPAwareOrchestrator(Agent):
 
 async def main():
     """Main example execution."""
-    
+
     print("=" * 60)
     print("MCP Integration Example")
     print("=" * 60)
     print()
-    
+
     # Example 1: Single MCP-enabled agent
     print("📋 Example 1: Single Agent with MCP")
     print("-" * 60)
-    
+
     agent = DataEnrichmentAgent({"name": "mcp_enrichment_agent"})
     await agent.initialize()
-    
+
     # Create test input
     test_input = AgentInput(
         request_id="test-001",
@@ -221,42 +221,42 @@ async def main():
         },
         metadata={"test": True}
     )
-    
+
     # Execute agent
     result = await agent.execute(test_input)
-    
+
     print(f"\n✅ Result:")
     print(f"   Status: {result.result.get('status')}")
     print(f"   MCP Enabled: {result.result.get('mcp_enabled')}")
     print(f"   Confidence: {result.confidence_score}")
-    
+
     if "sql_enrichment" in result.result:
         print(f"   SQL Enrichment: {result.result['sql_enrichment']}")
     if "external_enrichment" in result.result:
         print(f"   External Enrichment: {result.result['external_enrichment']}")
-    
+
     await agent.cleanup()
-    
+
     print()
-    
+
     # Example 2: Orchestrator with MCP-enabled agents
     print("📋 Example 2: Orchestrator with MCP Agents")
     print("-" * 60)
-    
+
     orchestrator = MCPAwareOrchestrator({"name": "mcp_orchestrator"})
     result = await orchestrator.execute(test_input)
-    
+
     print(f"\n✅ Result:")
     print(f"   Orchestration: {result.result.get('orchestration')}")
     print(f"   Enrichment Status: {result.result.get('enrichment_status')}")
     print(f"   MCP Enabled: {result.result.get('mcp_enabled')}")
     print(f"   Overall Confidence: {result.confidence_score}")
-    
+
     print()
     print("=" * 60)
     print("✨ Example completed successfully!")
     print("=" * 60)
-    
+
     # Print next steps
     print("\n📚 Next Steps:")
     if not MCP_AVAILABLE:
@@ -268,7 +268,7 @@ async def main():
         print("   2. Start MCP servers locally or connect to remote ones")
         print("   3. Update MCP configuration with server URLs")
         print("   4. Build your own MCP-enabled agents!")
-    
+
     print("\n📖 Documentation:")
     print("   - MCP Integration Guide: docs/MCP_INTEGRATION.md")
     print("   - MCP Client API: agents/mcp_client.py")
@@ -277,4 +277,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

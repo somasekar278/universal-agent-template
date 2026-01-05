@@ -18,21 +18,21 @@
 resources:
   - name: mcp-servers
     description: "Shared MCP servers for all agent applications"
-    
+
     runtime:
       kind: container
       image: "your-registry/mcp-servers:latest"
-      
+
       # Startup script that runs both MCP servers
       command: ["/bin/bash", "-c"]
       args:
         - |
           # Start MLflow MCP in background
           mlflow server mcp --host 0.0.0.0 --port 5000 &
-          
+
           # Start Databricks MCP in foreground
           python -m databricks_mcp.server --host 0.0.0.0 --port 6000
-      
+
       env:
         - name: DATABRICKS_HOST
           valueFrom:
@@ -42,7 +42,7 @@ resources:
             secretRef: databricks-token
         - name: MLFLOW_TRACKING_URI
           value: "databricks"
-      
+
       ports:
         - name: mlflow-mcp
           containerPort: 5000
@@ -50,7 +50,7 @@ resources:
         - name: databricks-mcp
           containerPort: 6000
           protocol: TCP
-      
+
       resources:
         requests:
           cpu: "1"
@@ -58,14 +58,14 @@ resources:
         limits:
           cpu: "2"
           memory: "8Gi"
-      
+
       readinessProbe:
         httpGet:
           path: /health
           port: 5000
         initialDelaySeconds: 15
         periodSeconds: 10
-      
+
       livenessProbe:
         httpGet:
           path: /health
@@ -78,12 +78,12 @@ resources:
 # ============================================================================
   - name: agent-app
     description: "Agent application (connects to separate MCP servers)"
-    
+
     runtime:
       kind: container
       image: "your-registry/agent-app:latest"
       command: ["uvicorn", "examples.databricks_app_configurable_mcp:app", "--host", "0.0.0.0", "--port", "8000"]
-      
+
       env:
         - name: DATABRICKS_HOST
           valueFrom:
@@ -91,24 +91,24 @@ resources:
         - name: DATABRICKS_TOKEN
           valueFrom:
             secretRef: databricks-token
-        
+
         # Point to separate MCP servers
         - name: MCP_DEPLOYMENT_CONFIG
           value: "config/mcp_deployment_config.yaml"
         - name: ENVIRONMENT
           value: "production"
-        
+
         # Override config to use separate mode
         - name: MLFLOW_MCP_ENDPOINT
           value: "http://mcp-servers:5000"
         - name: DATABRICKS_MCP_ENDPOINT
           value: "http://mcp-servers:6000"
-      
+
       ports:
         - name: app
           containerPort: 8000
           protocol: TCP
-      
+
       resources:
         requests:
           cpu: "2"
@@ -116,14 +116,14 @@ resources:
         limits:
           cpu: "4"
           memory: "16Gi"
-      
+
       readinessProbe:
         httpGet:
           path: /health
           port: 8000
         initialDelaySeconds: 20
         periodSeconds: 10
-      
+
       livenessProbe:
         httpGet:
           path: /health
@@ -138,4 +138,3 @@ resources:
 # - mcp-servers:5000 → MLflow MCP
 # - mcp-servers:6000 → Databricks MCP
 # - agent-app:8000 → Agent application
-

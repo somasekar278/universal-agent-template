@@ -23,20 +23,20 @@ class FeedbackSignal(str, Enum):
 class ScorerMetrics(BaseModel):
     """
     Metrics computed by MLflow custom scorers.
-    
+
     Used to evaluate agent performance on high-risk transactions.
     """
-    
+
     # Classification metrics
     accuracy: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     precision: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     recall: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     f1_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    
+
     # Fraud-specific metrics
     false_positive_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     false_negative_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    
+
     # Business metrics
     caught_fraud_value: Optional[float] = Field(
         default=None,
@@ -53,12 +53,12 @@ class ScorerMetrics(BaseModel):
         ge=0,
         description="Value of legitimate transactions incorrectly declined"
     )
-    
+
     # Narrative quality (for LLM-as-judge)
     narrative_clarity_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     narrative_completeness_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     narrative_accuracy_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -76,27 +76,27 @@ class ScorerMetrics(BaseModel):
 class EvaluationRecord(BaseModel):
     """
     Complete evaluation record for an agent prediction.
-    
+
     Links agent output to ground truth, scorer metrics, and feedback signals.
     """
-    
+
     evaluation_id: str = Field(..., description="Unique evaluation ID")
     request_id: str = Field(..., description="Associated request ID")
     transaction_id: str = Field(..., description="Associated transaction ID")
-    
+
     # Prediction and ground truth
     predicted_action: str = Field(..., description="Agent's recommended action")
     predicted_risk_score: float = Field(..., ge=0.0, le=1.0)
     ground_truth_label: str = Field(..., description="Actual fraud label")
-    
+
     # Evaluation outcome
     is_correct: bool = Field(..., description="Whether prediction was correct")
     is_false_positive: bool = Field(default=False)
     is_false_negative: bool = Field(default=False)
-    
+
     # Metrics
     scorer_metrics: ScorerMetrics = Field(..., description="Computed metrics")
-    
+
     # Feedback
     feedback_signals: list[FeedbackSignal] = Field(
         default_factory=list,
@@ -104,25 +104,25 @@ class EvaluationRecord(BaseModel):
     )
     feedback_timestamp: Optional[datetime] = Field(default=None)
     feedback_notes: Optional[str] = Field(default=None)
-    
+
     # MLflow tracking
     mlflow_run_id: Optional[str] = Field(default=None, description="Associated MLflow run")
     mlflow_experiment_id: Optional[str] = Field(default=None)
-    
+
     # Agent details
     agent_id: str = Field(..., description="Agent that made prediction")
     model_name: str = Field(..., description="LLM model used")
     prompt_version: Optional[str] = Field(default=None, description="Prompt version from UC")
-    
+
     # Timing
     evaluated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Additional metadata
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
         description="Additional evaluation metadata"
     )
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -141,4 +141,3 @@ class EvaluationRecord(BaseModel):
                 "prompt_version": "system_prompt_v3",
             }
         }
-

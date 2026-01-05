@@ -249,16 +249,16 @@ agents:
   coordinator:
     role: "coordinator"
     peers: ["specialist_a", "specialist_b", "specialist_c"]
-  
+
   specialist_a:
     role: "specialist"
     domain: "analysis"
     peers: ["coordinator", "specialist_b"]
-  
+
   specialist_b:
     role: "specialist"
     domain: "generation"
-  
+
   specialist_c:
     role: "validator"
     domain: "validation"
@@ -269,11 +269,11 @@ mcp:
     # Specialist A tools
     vector_search_domain_a:
       endpoint: "https://<host>/api/2.0/mcp/vector-search/domains/analysis"
-    
+
     # Specialist B tools
     vector_search_domain_b:
       endpoint: "https://<host>/api/2.0/mcp/vector-search/domains/generation"
-  
+
   # Agent-specific access control
   access_control:
     specialist_a:
@@ -307,7 +307,7 @@ optimization:
     - "specialist_a"
     - "specialist_b"
     - "specialist_c"
-  
+
   training_data:
     include_a2a_messages: true  # Multi-agent specific
 ```
@@ -397,7 +397,3 @@ See `examples/learning_agents_generic.py` for working code using these configs.
 ---
 
 **Choose your level and start building!** 🚀
-
-
-
-

@@ -1,7 +1,7 @@
 # ============================================================================
 # Level 5: Multi-Agent System (32-64 hours)
 # ============================================================================
-# 
+#
 # What this level adds:
 # - ✅ Multiple specialized agents
 # - ✅ Agent coordination & collaboration
@@ -31,14 +31,14 @@ agents:
     system_prompt: "You are a coordinator agent. Delegate tasks to specialized agents and aggregate results."
     role: "coordinator"
     max_tokens: 2000
-    
+
     execution:
       mode: "async"
       timeout: 60
-    
+
     # Can communicate with all other agents
     peers: ["specialist_a", "specialist_b", "specialist_c"]
-  
+
   # Specialist A - handles specific domain
   specialist_a:
     enabled: true
@@ -47,14 +47,14 @@ agents:
     role: "specialist"
     domain: "analysis"
     max_tokens: 3000
-    
+
     execution:
       mode: "async"
       timeout: 120
-    
+
     # Can receive requests from coordinator
     peers: ["coordinator", "specialist_b"]
-  
+
   # Specialist B - handles different domain
   specialist_b:
     enabled: true
@@ -63,13 +63,13 @@ agents:
     role: "specialist"
     domain: "generation"
     max_tokens: 3000
-    
+
     execution:
       mode: "async"
       timeout: 120
-    
+
     peers: ["coordinator", "specialist_a", "specialist_c"]
-  
+
   # Specialist C - validation/quality control
   specialist_c:
     enabled: true
@@ -78,11 +78,11 @@ agents:
     role: "validator"
     domain: "validation"
     max_tokens: 2000
-    
+
     execution:
       mode: "async"
       timeout: 60
-    
+
     peers: ["coordinator", "specialist_b"]
 
 # ============================================================================
@@ -92,23 +92,23 @@ agents:
 a2a:
   enabled: true
   protocol_version: "1.0"
-  
+
   # Transport layer
   transport:
     type: "http"  # or "grpc" for higher performance
     base_url: "http://agent-mesh:8080"
     timeout: 30
-  
+
   # Message routing
   routing:
     strategy: "capability"  # Route by agent capabilities
     fallback: "round_robin"
-  
+
   # Discovery
   discovery:
     enabled: true
     registry: "databricks_apps"  # Agents register themselves
-  
+
   # Message format
   message:
     format: "json_rpc"
@@ -121,38 +121,38 @@ a2a:
 orchestration:
   langgraph:
     enabled: true
-    
+
     workflow:
       # Multi-agent collaboration workflow
       nodes:
         - name: "receive_request"
           agent: "coordinator"
           role: "Intake"
-        
+
         - name: "analyze"
           agent: "specialist_a"
           role: "Analysis"
-        
+
         - name: "generate_solution"
           agent: "specialist_b"
           role: "Generation"
           depends_on: ["analyze"]
-        
+
         - name: "validate"
           agent: "specialist_c"
           role: "Validation"
           depends_on: ["generate_solution"]
-        
+
         - name: "aggregate"
           agent: "coordinator"
           role: "Aggregation"
           depends_on: ["validate"]
-      
+
       # Parallel execution where possible
       parallel:
         enabled: true
         max_workers: 3
-      
+
       # Error handling
       retry_on_failure: true
       max_retries: 2
@@ -163,29 +163,29 @@ orchestration:
 
 memory:
   enabled: true
-  
+
   # Shared memory pool
   shared:
     enabled: true
     scope: "global"  # All agents can access
     table: "main.agents.shared_memory"
-  
+
   # Private memory per agent
   private:
     enabled: true
     scope: "agent"
     table: "main.agents.private_memory"
     partitioned_by: ["agent_id"]
-  
+
   storage:
     type: "delta"
     compression: "snappy"
-  
+
   retrieval:
     strategy: "hybrid"
     max_items: 20
     similarity_threshold: 0.75
-  
+
   # Cross-agent memory access control
   access_control:
     enabled: true
@@ -204,15 +204,15 @@ memory:
 #
 mcp:
   deployment_mode: "external"
-  
+
   external:
     enabled: true
-    
+
     # ========================================================================
     # COORDINATOR AGENT TOOLS
     # ========================================================================
     # Coordinator needs broad access to monitor and coordinate
-    
+
     # Vector Search: Historical task outcomes
     vector_search_task_history:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/vector-search/agents/task_history"
@@ -220,7 +220,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # UC Functions: Agent orchestration functions
     uc_functions_orchestration:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/functions/agents/orchestration"
@@ -228,11 +228,11 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # ========================================================================
     # SPECIALIST A (ANALYSIS) TOOLS
     # ========================================================================
-    
+
     # Vector Search: Domain A knowledge base
     vector_search_domain_a_knowledge:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/vector-search/domains/analysis_knowledge"
@@ -240,7 +240,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # Genie: Analytical datasets
     genie_analytics:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/genie/${ANALYTICS_GENIE_SPACE_ID}"
@@ -249,7 +249,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # UC Functions: Analysis utilities
     uc_functions_analysis:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/functions/domains/analysis"
@@ -257,11 +257,11 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # ========================================================================
     # SPECIALIST B (GENERATION) TOOLS
     # ========================================================================
-    
+
     # Vector Search: Domain B knowledge base
     vector_search_domain_b_knowledge:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/vector-search/domains/generation_templates"
@@ -269,7 +269,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # Vector Search: Reference examples
     vector_search_examples:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/vector-search/domains/examples"
@@ -277,7 +277,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # UC Functions: Generation utilities
     uc_functions_generation:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/functions/domains/generation"
@@ -285,11 +285,11 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # ========================================================================
     # SPECIALIST C (VALIDATION) TOOLS
     # ========================================================================
-    
+
     # Vector Search: Validation rules & guidelines
     vector_search_validation_rules:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/vector-search/domains/validation_rules"
@@ -297,7 +297,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # Genie: Quality metrics datasets
     genie_quality_metrics:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/genie/${QUALITY_GENIE_SPACE_ID}"
@@ -306,7 +306,7 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # UC Functions: Validation functions
     uc_functions_validation:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/functions/domains/validation"
@@ -314,11 +314,11 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-    
+
     # ========================================================================
     # SHARED TOOLS (All Agents)
     # ========================================================================
-    
+
     # DBSQL: Ad-hoc SQL queries (for all agents)
     dbsql_shared:
       endpoint: "https://${DATABRICKS_HOST}/api/2.0/mcp/sql"
@@ -326,18 +326,18 @@ mcp:
       auth:
         type: "bearer_token"
         token: "${DATABRICKS_TOKEN}"
-  
+
   # Agent-specific MCP access control
   access_control:
     enabled: true
-    
+
     # Coordinator: Access to coordination tools
     coordinator:
       allowed_servers:
         - "vector_search_task_history"
         - "uc_functions_orchestration"
         - "dbsql_shared"
-    
+
     # Specialist A: Analysis-specific tools
     specialist_a:
       allowed_servers:
@@ -345,7 +345,7 @@ mcp:
         - "genie_analytics"
         - "uc_functions_analysis"
         - "dbsql_shared"
-    
+
     # Specialist B: Generation-specific tools
     specialist_b:
       allowed_servers:
@@ -353,7 +353,7 @@ mcp:
         - "vector_search_examples"
         - "uc_functions_generation"
         - "dbsql_shared"
-    
+
     # Specialist C: Validation-specific tools
     specialist_c:
       allowed_servers:
@@ -361,18 +361,18 @@ mcp:
         - "genie_quality_metrics"
         - "uc_functions_validation"
         - "dbsql_shared"
-  
+
   # Connection pooling (higher for multi-agent)
   connection:
     max_connections: 100
     connection_timeout_seconds: 10
     pool_size: 20
-  
+
   # Health checks
   monitoring:
     enabled: true
     health_check_interval_seconds: 60
-  
+
   # Resilience
   resilience:
     fallback_mode: "continue_without_mcp"
@@ -392,7 +392,7 @@ monitoring:
   deployment_mode: "embedded"
   enabled: true
   check_interval_seconds: 300
-  
+
   # Monitor all agents
   agents:
     coordinator:
@@ -409,7 +409,7 @@ monitoring:
             channel: "#coordinator-alerts"
           - type: "pagerduty"
             severity: "high"
-    
+
     specialist_a:
       enabled: true
       priority: "high"
@@ -418,7 +418,7 @@ monitoring:
         error_rate: 0.03
         latency: 30.0
       cooldown_hours: 12
-    
+
     specialist_b:
       enabled: true
       priority: "high"
@@ -427,7 +427,7 @@ monitoring:
         error_rate: 0.03
         latency: 30.0
       cooldown_hours: 12
-    
+
     specialist_c:
       enabled: true
       priority: "high"
@@ -436,7 +436,7 @@ monitoring:
         error_rate: 0.02
         latency: 10.0
       cooldown_hours: 12
-  
+
   # Advanced metrics
   advanced:
     metrics:
@@ -444,7 +444,7 @@ monitoring:
       - "message_passing_latency"
       - "task_completion_rate"
       - "consensus_quality"
-  
+
   notification_channels:
     slack:
       enabled: true
@@ -459,41 +459,41 @@ monitoring:
 
 optimization:
   enabled: true
-  
+
   # Optimize all agents
   agents:
     - "coordinator"
     - "specialist_a"
     - "specialist_b"
     - "specialist_c"
-  
+
   training_data:
     delta_table: "main.agents.multi_agent_training"
     holdout_table: "main.agents.multi_agent_holdout"
     input_column: "input"
     output_column: "expected_output"
-    
+
     # Include collaboration data
     include_a2a_messages: true
     include_agent_interactions: true
-  
+
   dspy:
     enabled: true
     method: "MIPRO"
     num_candidates: 15
     num_trials: 100  # More trials for multi-agent
     model_endpoint: "databricks-dbrx-instruct"
-  
+
   textgrad:
     enabled: true
     learning_rate: 0.1
     num_iterations: 30
     batch_size: 10
-  
+
   output:
     uc_volume: "/Volumes/main/agents/prompts"
     mlflow_experiment: "/agents/multi_agent_optimization"
-  
+
   # A/B test coordination
   ab_testing:
     enabled: true
@@ -508,7 +508,7 @@ databricks:
   workspace:
     host: ${DATABRICKS_HOST}
     token: ${DATABRICKS_TOKEN}
-  
+
   # Agent mesh deployment
   apps:
     agent_mesh:
@@ -517,51 +517,51 @@ databricks:
       min_instances: 3  # One per specialist + coordinator
       max_instances: 10
       health_check: "/health"
-  
+
   unity_catalog:
     enabled: true
     catalog_name: agents
     schema_name: production
-    
+
     volumes:
       prompts:
         name: prompts
         type: MANAGED
-      
+
       models:
         name: models
         type: MANAGED
-    
+
     tables:
       shared_memory:
         name: shared_memory
         type: MANAGED
         partitioned_by: ["date"]
-      
+
       private_memory:
         name: private_memory
         type: MANAGED
         partitioned_by: ["date", "agent_id"]
-      
+
       telemetry:
         name: telemetry
         type: MANAGED
         partitioned_by: ["date", "agent_id"]
-      
+
       a2a_messages:
         name: a2a_messages
         type: MANAGED
         partitioned_by: ["date"]
-      
+
       training_data:
         name: multi_agent_training
         type: MANAGED
-      
+
       trajectories:
         name: agent_trajectories
         type: MANAGED
         partitioned_by: ["date", "agent_id"]
-  
+
   model_serving:
     endpoint: "databricks-dbrx-instruct"
     always_on: true
@@ -578,11 +578,11 @@ telemetry:
     export_to_delta: true
     delta_table: "main.agents.telemetry"
     batch_interval_seconds: 10
-    
+
     # Trace agent interactions
     trace_a2a_messages: true
     trace_coordination: true
-  
+
   mlflow:
     enabled: true
     tracking_uri: "databricks"
@@ -590,7 +590,7 @@ telemetry:
     log_inputs: true
     log_outputs: true
     log_artifacts: true
-    
+
     # Multi-agent specific metrics
     log_metrics:
       - "response_time"
@@ -607,19 +607,19 @@ telemetry:
 
 benchmarking:
   enabled: true
-  
+
   metrics:
     - "multi_agent_accuracy"
     - "coordination_efficiency"
     - "message_overhead"
     - "task_completion_time"
     - "consensus_quality"
-  
+
   suites:
     - name: "collaboration_test"
       scenarios: 20
       parallel: true
-    
+
     - name: "failure_recovery"
       scenarios: 10
       inject_failures: true
@@ -630,20 +630,17 @@ benchmarking:
 
 deployment:
   platform: "databricks_apps"
-  
+
   containers:
     - name: "coordinator"
       agent: "coordinator"
       replicas: 2
-    
+
     - name: "specialists"
       agents: ["specialist_a", "specialist_b", "specialist_c"]
       replicas: 3
-  
+
   networking:
     mesh_enabled: true
     service_discovery: true
     load_balancing: "round_robin"
-
-
-

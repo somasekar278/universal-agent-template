@@ -22,14 +22,14 @@ from .base import SchemaAdapter
 class DefaultTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
     """
     Default adapter for our canonical NestedTransaction schema.
-    
+
     Use this when customer data already matches our schema.
     """
-    
+
     def to_canonical(self, source: Dict[str, Any]) -> NestedTransaction:
         """Direct validation - customer schema matches ours."""
         return NestedTransaction.model_validate(source)
-    
+
     def from_canonical(self, target: NestedTransaction) -> Dict[str, Any]:
         """Direct serialization."""
         return target.model_dump(exclude_none=True)
@@ -38,9 +38,9 @@ class DefaultTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]
 class StripeTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
     """
     Adapter for Stripe payment events.
-    
+
     Converts Stripe's schema to our canonical NestedTransaction.
-    
+
     Example Stripe event:
     {
         "id": "ch_abc123",
@@ -58,14 +58,14 @@ class StripeTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]])
         "metadata": {...}
     }
     """
-    
+
     def to_canonical(self, source: Dict[str, Any]) -> NestedTransaction:
         """Convert Stripe event to canonical schema."""
-        
+
         # Extract payment method details
         pm_details = source.get("payment_method_details", {})
         card_details = pm_details.get("card", {})
-        
+
         payment_method = PaymentMethodDetails(
             type="card",
             bin=self._get_nested_value(source, "payment_method.card.bin"),
@@ -73,7 +73,7 @@ class StripeTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]])
             issuer_country=card_details.get("country"),
             card_brand=card_details.get("brand"),
         )
-        
+
         # Extract customer details
         customer_data = source.get("customer_data", {})
         customer = CustomerDetails(
@@ -84,7 +84,7 @@ class StripeTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]])
             email_verified=customer_data.get("email_verified", False),
             phone_verified=customer_data.get("phone_verified", False),
         )
-        
+
         # Extract merchant details
         metadata = source.get("metadata", {})
         merchant = MerchantDetails(
@@ -93,17 +93,17 @@ class StripeTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]])
             category=metadata.get("merchant_category", "unknown"),
             is_verified=metadata.get("merchant_verified", False),
         )
-        
+
         # Extract device details
         device = DeviceDetails(
             ip=source.get("receipt_ip", "0.0.0.0"),
             fingerprint_id=source.get("payment_method", {}).get("fingerprint", "unknown"),
             is_vpn=False,  # Stripe doesn't provide this
         )
-        
+
         # Convert amount from cents to decimal
         amount = Decimal(source.get("amount", 0)) / 100
-        
+
         return NestedTransaction(
             id=source["id"],
             timestamp=datetime.fromtimestamp(source.get("created", 0)),
@@ -116,7 +116,7 @@ class StripeTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]])
             status=self._map_stripe_status(source.get("status")),
             fraud_label="unknown",
         )
-    
+
     def from_canonical(self, target: NestedTransaction) -> Dict[str, Any]:
         """Convert canonical schema back to Stripe format."""
         return {
@@ -138,7 +138,7 @@ class StripeTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]])
                 "merchant_country": target.merchant.country,
             }
         }
-    
+
     def _map_stripe_status(self, stripe_status: str) -> str:
         """Map Stripe status to our canonical status."""
         mapping = {
@@ -153,7 +153,7 @@ class StripeTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]])
 class AdyenTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
     """
     Adapter for Adyen payment notifications.
-    
+
     Example Adyen notification:
     {
         "pspReference": "8535296650153317",
@@ -172,12 +172,12 @@ class AdyenTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
         }
     }
     """
-    
+
     def to_canonical(self, source: Dict[str, Any]) -> NestedTransaction:
         """Convert Adyen notification to canonical schema."""
-        
+
         additional_data = source.get("additionalData", {})
-        
+
         payment_method = PaymentMethodDetails(
             type="card",
             bin=additional_data.get("cardBin"),
@@ -185,7 +185,7 @@ class AdyenTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
             issuer_country=additional_data.get("issuerCountry"),
             card_brand=source.get("paymentMethod"),
         )
-        
+
         # Extract from config or additional data
         customer = CustomerDetails(
             id=source.get("shopperReference", "unknown"),
@@ -194,22 +194,22 @@ class AdyenTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
             prior_disputes=0,  # Not in Adyen notification
             email_verified=False,
         )
-        
+
         merchant = MerchantDetails(
             id=source.get("merchantAccountCode", "unknown"),
             country=self.config.get("merchant_country"),
             category=self.config.get("merchant_category", "unknown"),
             is_verified=True,
         )
-        
+
         device = DeviceDetails(
             ip=additional_data.get("shopperIP", "0.0.0.0"),
             fingerprint_id=additional_data.get("deviceFingerprint", "unknown"),
             is_vpn=False,
         )
-        
+
         amount = Decimal(source.get("value", 0)) / 100
-        
+
         return NestedTransaction(
             id=source["pspReference"],
             timestamp=datetime.fromtimestamp(
@@ -223,7 +223,7 @@ class AdyenTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
             device=device,
             status=self._map_adyen_status(source.get("eventCode"), source.get("success")),
         )
-    
+
     def from_canonical(self, target: NestedTransaction) -> Dict[str, Any]:
         """Convert canonical schema back to Adyen format."""
         return {
@@ -238,7 +238,7 @@ class AdyenTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
                 "shopperIP": target.device.ip,
             }
         }
-    
+
     def _map_adyen_status(self, event_code: str, success: str) -> str:
         """Map Adyen event code to our canonical status."""
         if event_code == "AUTHORISATION":
@@ -253,10 +253,10 @@ class AdyenTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
 class ConfigurableTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, Any]]):
     """
     Fully configurable adapter using field mapping configuration.
-    
+
     This adapter can handle ANY customer schema by providing field mappings
     in the configuration. Perfect for rapid customer onboarding.
-    
+
     Config example:
     {
         "field_mappings": {
@@ -279,70 +279,69 @@ class ConfigurableTransactionAdapter(SchemaAdapter[NestedTransaction, Dict[str, 
         }
     }
     """
-    
+
     def to_canonical(self, source: Dict[str, Any]) -> NestedTransaction:
         """Convert using configuration-based field mappings."""
-        
+
         field_mappings = self.config.get("field_mappings", {})
         transformations = self.config.get("transformations", {})
         defaults = self.config.get("defaults", {})
-        
+
         # Build canonical dict from source using mappings
         canonical_dict = {}
-        
+
         for target_field, source_path in field_mappings.items():
             value = self._get_nested_value(source, source_path)
-            
+
             # Apply transformations
             if target_field in transformations:
                 value = self._apply_transformation(value, transformations[target_field])
-            
+
             if value is not None:
                 self._set_nested_value(canonical_dict, target_field, value)
-        
+
         # Apply defaults for missing fields
         for field, default_value in defaults.items():
             if self._get_nested_value(canonical_dict, field) is None:
                 self._set_nested_value(canonical_dict, field, default_value)
-        
+
         # Validate and construct nested transaction
         return NestedTransaction.model_validate(canonical_dict)
-    
+
     def from_canonical(self, target: NestedTransaction) -> Dict[str, Any]:
         """Reverse mapping from canonical to customer schema."""
-        
+
         field_mappings = self.config.get("field_mappings", {})
         target_dict = target.model_dump()
         source_dict = {}
-        
+
         # Reverse the mapping
         for target_field, source_path in field_mappings.items():
             value = self._get_nested_value(target_dict, target_field)
             if value is not None:
                 self._set_nested_value(source_dict, source_path, value)
-        
+
         return source_dict
-    
+
     def _apply_transformation(self, value: Any, transform: Dict[str, Any]) -> Any:
         """Apply transformation rules to a value."""
-        
+
         if "divide" in transform:
             value = Decimal(str(value)) / transform["divide"]
-        
+
         if "multiply" in transform:
             value = Decimal(str(value)) * transform["multiply"]
-        
+
         if "uppercase" in transform and transform["uppercase"]:
             value = str(value).upper()
-        
+
         if "lowercase" in transform and transform["lowercase"]:
             value = str(value).lower()
-        
+
         if "from_unix" in transform and transform["from_unix"]:
             value = datetime.fromtimestamp(int(value))
-        
+
         if "to_unix" in transform and transform["to_unix"]:
             value = int(value.timestamp())
-        
-        return value
 
+        return value

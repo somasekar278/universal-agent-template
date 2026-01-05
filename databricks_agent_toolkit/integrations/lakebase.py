@@ -12,15 +12,17 @@ For large-scale RAG/vector search, use DatabricksVectorSearch (Delta Lake-based)
 Documentation: https://docs.databricks.com/lakebase/
 """
 
-from typing import List, Dict, Any, Optional
 import os
 import time
+from typing import Any, Dict, List, Optional
+
 import requests
 from requests.auth import HTTPBasicAuth
 
 try:
     import psycopg2
     from psycopg2.extras import RealDictCursor
+
     PSYCOPG2_AVAILABLE = True
 except ImportError:
     PSYCOPG2_AVAILABLE = False
@@ -31,13 +33,13 @@ except ImportError:
 class Lakebase:
     """
     Client for Databricks Lakebase (Managed PostgreSQL).
-    
+
     Perfect for agent memory, sessions, and structured data.
-    
+
     Example:
         ```python
         from databricks_agent_toolkit.integrations import Lakebase
-        
+
         # Initialize
         lakebase = Lakebase(
             host="your-lakebase.cloud.databricks.com",
@@ -45,7 +47,7 @@ class Lakebase:
             user="your_user",
             password="your_password"
         )
-        
+
         # Store conversation
         lakebase.execute(
             \"\"\"
@@ -54,24 +56,24 @@ class Lakebase:
             \"\"\",
             ("session_123", "user", "Hello!")
         )
-        
+
         # Retrieve conversation history
         history = lakebase.query(
             \"\"\"
-            SELECT role, content, timestamp 
-            FROM conversations 
-            WHERE session_id = %s 
+            SELECT role, content, timestamp
+            FROM conversations
+            WHERE session_id = %s
             ORDER BY timestamp
             \"\"\",
             ("session_123",)
         )
         ```
-    
+
     For pgvector integration:
         ```python
         # Enable pgvector extension (one-time)
         lakebase.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        
+
         # Create table with vector column
         lakebase.execute(\"\"\"
             CREATE TABLE embeddings (
@@ -80,7 +82,7 @@ class Lakebase:
                 embedding vector(1536)
             )
         \"\"\")
-        
+
         # Vector similarity search
         results = lakebase.query(\"\"\"
             SELECT content, embedding <-> %s AS distance
@@ -90,7 +92,7 @@ class Lakebase:
         \"\"\", (query_embedding,))
         ```
     """
-    
+
     def __init__(
         self,
         host: Optional[str] = None,
@@ -99,11 +101,11 @@ class Lakebase:
         password: Optional[str] = None,
         port: int = 5432,
         sslmode: Optional[str] = None,
-        channel_binding: Optional[str] = None
+        channel_binding: Optional[str] = None,
     ):
         """
         Initialize Lakebase (PostgreSQL) connection.
-        
+
         Args:
             host: Lakebase host (env: LAKEBASE_HOST or PGHOST)
             database: Database name (env: LAKEBASE_DATABASE or PGDATABASE)
@@ -112,16 +114,15 @@ class Lakebase:
             port: Port (default: 5432)
             sslmode: SSL mode (env: PGSSLMODE) - 'require', 'prefer', etc.
             channel_binding: Channel binding (env: PGCHANNELBINDING) - 'require', 'prefer', 'disable'
-        
+
         Raises:
             ImportError: If psycopg2 is not installed
         """
         if not PSYCOPG2_AVAILABLE:
             raise ImportError(
-                "psycopg2 is required for Lakebase integration. "
-                "Install with: pip install psycopg2-binary"
+                "psycopg2 is required for Lakebase integration. " "Install with: pip install psycopg2-binary"
             )
-        
+
         # Support both LAKEBASE_* and PG* environment variables
         self.host = host or os.getenv("LAKEBASE_HOST") or os.getenv("PGHOST")
         self.database = database or os.getenv("LAKEBASE_DATABASE") or os.getenv("PGDATABASE")
@@ -130,14 +131,14 @@ class Lakebase:
         self.port = port
         self.sslmode = sslmode or os.getenv("PGSSLMODE", "prefer")
         self.channel_binding = channel_binding or os.getenv("PGCHANNELBINDING", "prefer")
-        
+
         # OAuth M2M for Service Principal (Databricks Apps)
-        self.oauth_client_id = os.getenv('DATABRICKS_CLIENT_ID')
-        self.oauth_client_secret = os.getenv('DATABRICKS_CLIENT_SECRET')
-        self.databricks_host = os.getenv('DATABRICKS_HOST', '')
+        self.oauth_client_id = os.getenv("DATABRICKS_CLIENT_ID")
+        self.oauth_client_secret = os.getenv("DATABRICKS_CLIENT_SECRET")
+        self.databricks_host = os.getenv("DATABRICKS_HOST", "")
         self._cached_token = None
         self._token_expiry = 0
-        
+
         # Determine authentication method
         # For Provisioned Lakebase: Use OAuth Client ID as username + token as password
         # For traditional: Use explicit username/password
@@ -146,7 +147,8 @@ class Lakebase:
             if not all([self.host, self.database]):
                 raise ValueError(
                     "Missing Lakebase credentials. Provide via arguments or environment variables:\n"
-                    "LAKEBASE_HOST/PGHOST, LAKEBASE_DATABASE/PGDATABASE, LAKEBASE_USER/PGUSER, LAKEBASE_PASSWORD/PGPASSWORD"
+                    "LAKEBASE_HOST/PGHOST, LAKEBASE_DATABASE/PGDATABASE, "
+                    "LAKEBASE_USER/PGUSER, LAKEBASE_PASSWORD/PGPASSWORD"
                 )
             self.auth_method = "Username/Password"
             print("🔐 Using Username/Password authentication for Lakebase")
@@ -165,15 +167,15 @@ class Lakebase:
                 "1. OAuth M2M: DATABRICKS_CLIENT_ID + DATABRICKS_CLIENT_SECRET (for Databricks Apps)\n"
                 "2. Username/Password: LAKEBASE_USER/PGUSER + LAKEBASE_PASSWORD/PGPASSWORD"
             )
-        
+
         self.connection = None
-    
+
     def _get_oauth_token(self) -> str:
         """Get OAuth token for Service Principal authentication."""
         # Check if we have a valid cached token
         if self._cached_token and time.time() < self._token_expiry:
             return self._cached_token
-        
+
         # Get new token
         token_url = f"{self.databricks_host}/oidc/v1/token"
         response = requests.post(
@@ -181,17 +183,17 @@ class Lakebase:
             auth=HTTPBasicAuth(self.oauth_client_id, self.oauth_client_secret),
             data={"grant_type": "client_credentials", "scope": "all-apis"},
             headers={"Content-Type": "application/x-www-form-urlencoded"},
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
-        
+
         token_data = response.json()
         self._cached_token = token_data["access_token"]
         # Set expiry with 5 min buffer
         self._token_expiry = time.time() + token_data.get("expires_in", 3600) - 300
-        
+
         return self._cached_token
-    
+
     def connect(self):
         """Establish connection to Lakebase."""
         if self.connection is None or self.connection.closed:
@@ -207,7 +209,7 @@ class Lakebase:
                 # Use provided username/password
                 conn_user = self.user
                 conn_password = self.password
-            
+
             # Build connection parameters
             conn_params = {
                 "host": self.host,
@@ -217,7 +219,7 @@ class Lakebase:
                 "port": self.port,
                 "sslmode": self.sslmode,
             }
-            
+
             # Add channel_binding if specified
             # Note: channel_binding support requires psycopg2 2.8+
             if self.channel_binding and self.channel_binding != "prefer":
@@ -227,24 +229,24 @@ class Lakebase:
                 except Exception:
                     # Older psycopg2 versions don't support this parameter
                     pass
-            
+
             self.connection = psycopg2.connect(**conn_params)
             print(f"✅ Connected to Lakebase: {self.host}/{self.database} ({self.auth_method})")
-    
+
     def close(self):
         """Close connection to Lakebase."""
         if self.connection and not self.connection.closed:
             self.connection.close()
             print("✅ Closed Lakebase connection")
-    
+
     def execute(self, query: str, params: Optional[tuple] = None) -> int:
         """
         Execute a SQL command (INSERT, UPDATE, DELETE, CREATE, etc.).
-        
+
         Args:
             query: SQL query
             params: Query parameters (for parameterized queries)
-        
+
         Returns:
             Number of rows affected
         """
@@ -254,24 +256,19 @@ class Lakebase:
                 cursor.execute(query, params)
                 self.connection.commit()
                 return cursor.rowcount
-        except Exception as e:
+        except Exception:
             self.connection.rollback()
             raise
-    
-    def query(
-        self,
-        query: str,
-        params: Optional[tuple] = None,
-        fetch_one: bool = False
-    ) -> List[Dict[str, Any]]:
+
+    def query(self, query: str, params: Optional[tuple] = None, fetch_one: bool = False) -> List[Dict[str, Any]]:
         """
         Execute a SELECT query and return results.
-        
+
         Args:
             query: SQL SELECT query
             params: Query parameters
             fetch_one: If True, return only first result
-        
+
         Returns:
             List of result dictionaries (or single dict if fetch_one=True)
         """
@@ -283,14 +280,14 @@ class Lakebase:
                     result = cursor.fetchone()
                     return dict(result) if result else None
                 return [dict(row) for row in cursor.fetchall()]
-        except Exception as e:
+        except Exception:
             self.connection.rollback()
             raise
-    
+
     def create_conversations_table(self):
         """
         Create a standard conversations table for agent memory.
-        
+
         Schema:
         - session_id: Unique identifier for conversation session
         - role: "user" or "assistant"
@@ -300,23 +297,27 @@ class Lakebase:
         """
         # Check if table already exists
         try:
-            result = self.query("""
+            result = self.query(
+                """
                 SELECT EXISTS (
-                    SELECT FROM pg_tables 
-                    WHERE schemaname = 'public' 
+                    SELECT FROM pg_tables
+                    WHERE schemaname = 'public'
                     AND tablename = 'conversations'
                 )
-            """, fetch_one=True)
-            
-            if result and result.get('exists'):
+            """,
+                fetch_one=True,
+            )
+
+            if result and result.get("exists"):
                 print("✅ Conversations table already exists")
                 return
         except Exception as e:
             print(f"⚠️  Could not check if table exists: {e}")
-        
+
         # Try to create table
         try:
-            self.execute("""
+            self.execute(
+                """
                 CREATE TABLE IF NOT EXISTS conversations (
                     id SERIAL PRIMARY KEY,
                     session_id VARCHAR(255) NOT NULL,
@@ -325,7 +326,8 @@ class Lakebase:
                     timestamp TIMESTAMP DEFAULT NOW(),
                     metadata JSONB
                 )
-            """)
+            """
+            )
             print("✅ Created conversations table")
         except Exception as e:
             # Table might already exist or we lack CREATE permission
@@ -333,28 +335,22 @@ class Lakebase:
                 print("⚠️  No CREATE permission, assuming table exists")
             else:
                 raise
-        
+
         # Try to create indexes (optional, don't fail if we can't)
         for index_name, index_sql in [
             ("idx_session", "CREATE INDEX IF NOT EXISTS idx_session ON conversations(session_id)"),
-            ("idx_timestamp", "CREATE INDEX IF NOT EXISTS idx_timestamp ON conversations(timestamp)")
+            ("idx_timestamp", "CREATE INDEX IF NOT EXISTS idx_timestamp ON conversations(timestamp)"),
         ]:
             try:
                 self.execute(index_sql)
             except Exception:
                 # Indexes are optional optimization
                 pass
-    
-    def store_message(
-        self,
-        session_id: str,
-        role: str,
-        content: str,
-        metadata: Optional[Dict[str, Any]] = None
-    ):
+
+    def store_message(self, session_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None):
         """
         Store a conversation message.
-        
+
         Args:
             session_id: Session identifier
             role: "user" or "assistant"
@@ -362,26 +358,23 @@ class Lakebase:
             metadata: Optional metadata
         """
         import json
+
         self.execute(
             """
             INSERT INTO conversations (session_id, role, content, metadata)
             VALUES (%s, %s, %s, %s)
             """,
-            (session_id, role, content, json.dumps(metadata) if metadata else None)
+            (session_id, role, content, json.dumps(metadata) if metadata else None),
         )
-    
-    def get_conversation_history(
-        self,
-        session_id: str,
-        limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+
+    def get_conversation_history(self, session_id: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Retrieve conversation history for a session.
-        
+
         Args:
             session_id: Session identifier
             limit: Maximum number of messages to return (most recent)
-        
+
         Returns:
             List of messages with role, content, timestamp, metadata
         """
@@ -391,35 +384,32 @@ class Lakebase:
             WHERE session_id = %s
             ORDER BY timestamp DESC
         """
-        
+
         if limit:
             query += f" LIMIT {limit}"
-        
+
         results = self.query(query, (session_id,))
         return list(reversed(results))  # Return chronological order
-    
+
     def clear_conversation(self, session_id: str):
         """Delete all messages for a session."""
-        self.execute(
-            "DELETE FROM conversations WHERE session_id = %s",
-            (session_id,)
-        )
+        self.execute("DELETE FROM conversations WHERE session_id = %s", (session_id,))
         print(f"✅ Cleared conversation: {session_id}")
-    
+
     def enable_pgvector(self):
         """
         Enable pgvector extension for vector operations.
-        
+
         Run this once to enable vector similarity search.
         """
         self.execute("CREATE EXTENSION IF NOT EXISTS vector")
         print("✅ Enabled pgvector extension")
-    
+
     def __enter__(self):
         """Context manager entry."""
         self.connect()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
@@ -429,18 +419,19 @@ class Lakebase:
 # Helper Functions
 # ============================================================================
 
+
 def get_lakebase_connection_string(
     host: Optional[str] = None,
     database: Optional[str] = None,
     user: Optional[str] = None,
     password: Optional[str] = None,
-    port: int = 5432
+    port: int = 5432,
 ) -> str:
     """
     Generate PostgreSQL connection string for Lakebase.
-    
+
     Useful for SQLAlchemy, Django, or other ORMs.
-    
+
     Returns:
         Connection string in format: postgresql://user:pass@host:port/db
     """
@@ -448,5 +439,5 @@ def get_lakebase_connection_string(
     database = database or os.getenv("LAKEBASE_DATABASE")
     user = user or os.getenv("LAKEBASE_USER")
     password = password or os.getenv("LAKEBASE_PASSWORD")
-    
+
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"

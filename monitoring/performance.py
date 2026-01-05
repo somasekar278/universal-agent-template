@@ -18,4 +18,3 @@ class PerformanceMonitor:
             p99_latency_ms=500.0,
             throughput=100.0
         )
-

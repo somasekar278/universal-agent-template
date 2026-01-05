@@ -42,6 +42,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        exclude: ^config/agent_config\.yaml$
       - id: check-added-large-files
         args: ['--maxkb=500']
       - id: check-merge-conflict
@@ -55,11 +56,10 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-      
+
       - id: cleanup-temp-files
         name: Clean up temporary test files
         entry: python3 scripts/cleanup_temp_files.py
         language: system
         pass_filenames: false
         always_run: true
-

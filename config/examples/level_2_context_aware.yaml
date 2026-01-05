@@ -1,7 +1,7 @@
 # ============================================================================
 # Level 2: Context-Aware Assistant (4-8 hours)
 # ============================================================================
-# 
+#
 # What this level adds:
 # - ✅ Memory/context tracking
 # - ✅ Session management
@@ -28,7 +28,7 @@ agents:
     system_prompt: "You are a helpful assistant with memory. Reference previous conversation when relevant."
     max_tokens: 1000
     temperature: 0.7
-    
+
     # Memory configuration
     memory:
       enabled: true
@@ -42,10 +42,10 @@ agents:
 
 memory:
   enabled: true
-  
+
   storage:
     type: "in_memory"  # Simple dict-based storage for L2
-    
+
   retrieval:
     strategy: "recent"  # Just get recent history
     max_items: 10
@@ -73,7 +73,7 @@ databricks:
   workspace:
     host: ${DATABRICKS_HOST}
     token: ${DATABRICKS_TOKEN}
-  
+
   model_serving:
     endpoint: "databricks-dbrx-instruct"
 
@@ -84,7 +84,7 @@ databricks:
 telemetry:
   otel:
     enabled: false
-  
+
   mlflow:
     enabled: true
     tracking_uri: "databricks"
@@ -94,6 +94,3 @@ telemetry:
     log_metrics:
       - "response_time"
       - "token_count"
-
-
-

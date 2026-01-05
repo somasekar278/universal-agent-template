@@ -30,25 +30,25 @@ from typing import Dict, Any
 def example_1_automatic_telemetry():
     """
     Agents automatically log telemetry when Zerobus is enabled.
-    
+
     No code changes needed - just enable in config!
     """
     print("=" * 80)
     print("Example 1: Automatic Agent Telemetry")
     print("=" * 80)
     print()
-    
+
     from agents.base import Agent
     from shared.schemas import AgentInput, AgentOutput
-    
+
     class ChatbotAgent(Agent):
         def __init__(self):
             super().__init__(name="chatbot", description="Simple chatbot")
-        
+
         def process(self, input_data: AgentInput) -> AgentOutput:
             """
             Process request.
-            
+
             Telemetry automatically logged:
             - Request timestamp
             - Input text
@@ -58,26 +58,26 @@ def example_1_automatic_telemetry():
             """
             # Simulate processing
             time.sleep(0.1)
-            
+
             response = f"Echo: {input_data.data.get('message', '')}"
-            
+
             return AgentOutput(
                 success=True,
                 data={"response": response},
                 metadata={"model": "echo-v1"}
             )
-    
+
     # Create agent
     agent = ChatbotAgent()
-    
+
     # Process request - telemetry logged automatically!
     input_data = AgentInput(
         request_id="req_001",
         data={"message": "Hello, agent!"}
     )
-    
+
     result = agent.process(input_data)
-    
+
     print(f"✅ Request processed: {result.data['response']}")
     print(f"   Telemetry automatically logged to Unity Catalog!")
     print()
@@ -90,21 +90,21 @@ def example_1_automatic_telemetry():
 def example_2_custom_events():
     """
     Log custom telemetry events.
-    
+
     Useful for tracking custom metrics, business events, etc.
     """
     print("=" * 80)
     print("Example 2: Custom Event Logging")
     print("=" * 80)
     print()
-    
+
     try:
         from telemetry.zerobus_integration import create_zerobus_client, log_agent_event
-        
+
         # Load config
         import yaml
         from pathlib import Path
-        
+
         config_file = Path("config/agent_config.yaml")
         if not config_file.exists():
             print("⚠️  Config file not found - using environment variables")
@@ -118,10 +118,10 @@ def example_2_custom_events():
             with open(config_file, 'r') as f:
                 full_config = yaml.safe_load(f)
                 config = full_config.get("telemetry", {}).get("zerobus", {})
-        
+
         # Create client
         client = create_zerobus_client(config)
-        
+
         # Log custom events
         events = [
             {
@@ -143,7 +143,7 @@ def example_2_custom_events():
                 "action": "signed_up"
             }
         ]
-        
+
         for event in events:
             log_agent_event(
                 client=client,
@@ -152,13 +152,13 @@ def example_2_custom_events():
                 data=event
             )
             print(f"✅ Logged: {event.get('name', event.get('type'))}")
-        
+
         # Flush to ensure delivery
         client.flush()
         print()
         print("✅ All events flushed to Unity Catalog")
         print()
-        
+
     except ImportError as e:
         print(f"⚠️  Zerobus not configured: {e}")
         print("   Run: agent-telemetry setup --interactive")
@@ -172,7 +172,7 @@ def example_2_custom_events():
 def example_3_batch_processing():
     """
     Process many events efficiently with batching.
-    
+
     Events are automatically batched:
     - Flush every 1000 events (configurable)
     - Or every 10 seconds (configurable)
@@ -181,29 +181,29 @@ def example_3_batch_processing():
     print("Example 3: Batch Processing")
     print("=" * 80)
     print()
-    
+
     try:
         from telemetry.zerobus_integration import create_zerobus_client
         import yaml
         from pathlib import Path
-        
+
         # Load config
         config_file = Path("config/agent_config.yaml")
         if not config_file.exists():
             print("⚠️  Config file not found")
             return
-        
+
         with open(config_file, 'r') as f:
             full_config = yaml.safe_load(f)
             config = full_config.get("telemetry", {}).get("zerobus", {})
-        
+
         # Create client
         client = create_zerobus_client(config)
-        
+
         # Process many events
         print("Processing 100 events...")
         start_time = time.time()
-        
+
         for i in range(100):
             client.log_event({
                 "event_type": "batch_process",
@@ -211,21 +211,21 @@ def example_3_batch_processing():
                 "record_id": f"record_{i:04d}",
                 "value": i * 2
             })
-        
+
         # Force flush
         client.flush()
-        
+
         elapsed = time.time() - start_time
-        
+
         print(f"✅ Processed 100 events in {elapsed:.2f}s")
         print(f"   Average: {elapsed/100*1000:.2f}ms per event")
         print()
-        
+
         print("ℹ️  Events are automatically batched for performance:")
         print(f"   - Batch size: {config.get('batch_size', 1000)} events")
         print(f"   - Flush interval: {config.get('batch_interval_seconds', 10)}s")
         print()
-        
+
     except Exception as e:
         print(f"⚠️  Error: {e}")
         print()
@@ -238,7 +238,7 @@ def example_3_batch_processing():
 def example_4_error_resilience():
     """
     Telemetry is resilient - failures don't crash your agent.
-    
+
     Features:
     - Automatic retry (3 attempts by default)
     - Exponential backoff (1s, 2s, 4s)
@@ -248,10 +248,10 @@ def example_4_error_resilience():
     print("Example 4: Error Resilience")
     print("=" * 80)
     print()
-    
+
     try:
         from telemetry.zerobus_integration import ZerobusClient
-        
+
         # Create client with intentionally bad config
         bad_config = {
             "uc_endpoint": "https://invalid.databricks.com",
@@ -260,18 +260,18 @@ def example_4_error_resilience():
             "client_secret": "invalid",
             "max_retries": 3
         }
-        
+
         client = ZerobusClient(bad_config)
-        
+
         print("Attempting to log event with invalid config...")
-        
+
         # Try to log - will fail gracefully
         success = client.log_event({
             "event_type": "test",
             "agent_id": "test_agent",
             "message": "This will fail"
         })
-        
+
         if not success:
             print("❌ Event logging failed (as expected)")
             print("✅ But the agent didn't crash!")
@@ -281,7 +281,7 @@ def example_4_error_resilience():
             print("   - Automatic retry with backoff")
             print("   - Events buffered in memory")
             print()
-        
+
     except Exception as e:
         print(f"⚠️  Error: {e}")
         print()
@@ -294,32 +294,32 @@ def example_4_error_resilience():
 def example_5_query_telemetry():
     """
     Query telemetry data from Unity Catalog.
-    
+
     Use Databricks SQL connector to analyze telemetry.
     """
     print("=" * 80)
     print("Example 5: Query Telemetry")
     print("=" * 80)
     print()
-    
+
     try:
         from databricks import sql
         import os
-        
+
         # Connect to Databricks
         connection = sql.connect(
             server_hostname=os.getenv("DATABRICKS_SERVER_HOSTNAME"),
             http_path=os.getenv("DATABRICKS_HTTP_PATH"),
             access_token=os.getenv("DATABRICKS_TOKEN")
         )
-        
+
         cursor = connection.cursor()
-        
+
         # Query recent events
         table = os.getenv("ZEROBUS_TABLE", "catalog.schema.telemetry")
-        
+
         query = f"""
-        SELECT 
+        SELECT
             timestamp,
             event_type,
             agent_id,
@@ -330,25 +330,25 @@ def example_5_query_telemetry():
         ORDER BY timestamp DESC
         LIMIT 10
         """
-        
+
         print(f"Querying: {table}")
         print()
-        
+
         cursor.execute(query)
-        
+
         print(f"{'Timestamp':<20} {'Event Type':<15} {'Agent ID':<20} {'Count':<10}")
         print("-" * 70)
-        
+
         for row in cursor.fetchall():
             print(f"{str(row[0]):<20} {row[1]:<15} {row[2]:<20} {row[3]:<10}")
-        
+
         print()
         print("✅ Query complete")
         print()
-        
+
         cursor.close()
         connection.close()
-        
+
     except ImportError:
         print("⚠️  databricks-sql-connector not installed")
         print("   Install with: pip install databricks-sql-connector")
@@ -378,7 +378,7 @@ if __name__ == "__main__":
     print()
     print("=" * 80)
     print()
-    
+
     # Run examples
     try:
         example_1_automatic_telemetry()
@@ -386,14 +386,14 @@ if __name__ == "__main__":
         example_3_batch_processing()
         example_4_error_resilience()
         example_5_query_telemetry()
-        
+
     except KeyboardInterrupt:
         print("\n\n⚠️  Interrupted by user")
     except Exception as e:
         print(f"\n\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
-    
+
     print()
     print("=" * 80)
     print("✅ Examples Complete")
@@ -406,6 +406,3 @@ if __name__ == "__main__":
     print()
     print("📚 Documentation: docs/TELEMETRY.md")
     print()
-
-
-

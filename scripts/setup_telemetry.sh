@@ -2,7 +2,7 @@
 
 #############################################################################
 # Turnkey Telemetry Setup Script
-# 
+#
 # Based on: https://github.com/vivian-xie-db/e2e-chatbot-zerobus
 #
 # This script sets up Zerobus telemetry in one command:
@@ -134,7 +134,7 @@ if python -m grpc_tools.protoc \
     --python_out=. \
     --proto_path=. \
     "$OUTPUT"; then
-    
+
     PROTO_MODULE="${OUTPUT%.proto}_pb2.py"
     echo -e "${GREEN}✅ Compiled to $PROTO_MODULE${NC}"
 else
@@ -153,7 +153,7 @@ CONFIG_FILE="config/agent_config.yaml"
 
 if [ -f "$CONFIG_FILE" ]; then
     echo "Updating $CONFIG_FILE..."
-    
+
     # Update the zerobus section
     python - <<EOF
 import yaml
@@ -182,7 +182,7 @@ with open(config_file, 'w') as f:
 
 print('✅ Updated configuration')
 EOF
-    
+
 else
     echo -e "${YELLOW}⚠️  Config file not found: $CONFIG_FILE${NC}"
     echo "   Telemetry will use environment variables"
@@ -252,6 +252,3 @@ echo ""
 echo "📚 Documentation: docs/TELEMETRY.md"
 echo ""
 echo "================================================================================"
-
-
-

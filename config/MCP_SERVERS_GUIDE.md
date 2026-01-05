@@ -107,14 +107,14 @@ deployment_mode: external
 
 external:
   enabled: true
-  
+
   # Search support tickets & docs (unstructured data)
   vector_search_support:
     endpoint: "https://workspace.cloud.databricks.com/api/2.0/mcp/vector-search/prod/customer_support"
     auth:
       type: "bearer_token"
       token: "${DATABRICKS_TOKEN}"
-  
+
   # Query billing data (structured data)
   genie_billing:
     endpoint: "https://workspace.cloud.databricks.com/api/2.0/mcp/genie/${BILLING_SPACE_ID}"
@@ -122,7 +122,7 @@ external:
     auth:
       type: "bearer_token"
       token: "${DATABRICKS_TOKEN}"
-  
+
   # Account lookups & updates (custom business logic)
   uc_functions_billing:
     endpoint: "https://workspace.cloud.databricks.com/api/2.0/mcp/functions/prod/billing"
@@ -142,14 +142,14 @@ async with McpClient() as client:
         tool="search",
         args={"query": "payment issues", "top_k": 5}
     )
-    
+
     # Get customer billing info
     billing = await client.call_tool(
         server="genie_billing",
         tool="query",
         args={"question": "Show billing for customer ID 12345"}
     )
-    
+
     # Execute account update
     result = await client.call_tool(
         server="uc_functions_billing",
@@ -197,7 +197,7 @@ external:
     auth:
       type: "bearer_token"
       token: "${GITHUB_TOKEN}"
-  
+
   slack_mcp:
     endpoint: "https://mcp.slack.com/v1"
     auth:
@@ -244,16 +244,16 @@ deployment_mode: external
 
 external:
   enabled: true
-  
+
   # Add as many MCP servers as you need
   mlflow_mcp:
     endpoint: "..."
     auth: {...}
-  
+
   custom_server_1:
     endpoint: "..."
     auth: {...}
-  
+
   custom_server_2:
     endpoint: "..."
     auth: {...}
@@ -305,14 +305,14 @@ async with McpClient() as client:
         tool="search_traces",
         args={"filter_string": "tags.agent = 'my-agent'"}
     )
-    
+
     # GitHub MCP (public)
     issues = await client.call_tool(
         server="github_mcp",
         tool="list_issues",
         args={"repo": "my-org/my-repo"}
     )
-    
+
     # Your custom MCP
     result = await client.call_tool(
         server="databricks_mcp",
@@ -369,7 +369,7 @@ deployment_mode: external
 
 external:
   enabled: true
-  
+
   # Native Databricks MLflow
   mlflow_mcp:
     endpoint: "https://workspace.cloud.databricks.com/mlflow/mcp"
@@ -377,7 +377,7 @@ external:
     auth:
       type: "bearer_token"
       token: "${DATABRICKS_TOKEN}"
-  
+
   # Public GitHub MCP
   github_mcp:
     endpoint: "https://api.github.com/mcp"
@@ -385,7 +385,7 @@ external:
     auth:
       type: "bearer_token"
       token: "${GITHUB_TOKEN}"
-  
+
   # Your custom tools
   custom_tools:
     endpoint: "https://mcp.yourcompany.com"
@@ -424,4 +424,3 @@ external:
 - MLflow MCP: https://mlflow.org/docs/latest/llms/tracing/index.html#mcp-server
 - Client Code: `mcp/client.py`
 - Manager Code: `mcp/manager.py`
-

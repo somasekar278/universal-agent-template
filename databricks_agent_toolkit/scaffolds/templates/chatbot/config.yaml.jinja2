@@ -9,18 +9,18 @@ model:
   endpoint: {{ model }}  # Modern foundation model
   temperature: 0.7
   max_tokens: 500
-  
+
   # Response mode
   streaming: false  # Set to true for token-by-token streaming
+  token_delay_ms: 30  # Typewriter delay in milliseconds (lower = faster, 0 = instant)
 
 # MLflow tracking
 mlflow:
   experiment: /Shared/{{ name }}
   auto_trace: true
   show_url: false  # Show MLflow URL after conversations (for developers)
-  
+
   # Assessment collection (human feedback)
   assessments:
     enabled: true  # Set to false to disable
     frequency: 5  # Ask for feedback every N conversations (0 = never)
-

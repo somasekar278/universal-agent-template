@@ -18,9 +18,9 @@ from agents.tool_registry import DynamicToolRegistry, ToolStatus, get_global_reg
 # Example: Register tools at runtime
 def setup_tools():
     """Set up example tools with rich metadata."""
-    
+
     registry = get_global_registry()
-    
+
     # Tool 1: Fraud Detector
     @registry.register_tool(
         name="fraud_detector_v2",
@@ -55,13 +55,13 @@ def setup_tools():
         # Simulated fraud detection
         fraud_score = 0.25 if amount < 1000 else 0.75
         risk_level = "low" if fraud_score < 0.5 else "high"
-        
+
         return {
             "fraud_score": fraud_score,
             "risk_level": risk_level,
             "indicators": ["amount_check", "merchant_verification"]
         }
-    
+
     # Tool 2: Data Enrichment
     @registry.register_tool(
         name="data_enricher",
@@ -95,7 +95,7 @@ def setup_tools():
                 "customer_history": {"transaction_count": 50, "avg_amount": 250.00}
             }
         }
-    
+
     # Tool 3: Risk Scorer
     @registry.register_tool(
         name="risk_scorer",
@@ -127,12 +127,12 @@ def setup_tools():
         """Calculate risk score."""
         final_score = (fraud_score * 0.5 + credit_score * 0.3 + compliance_score * 0.2)
         recommendation = "approve" if final_score < 0.5 else "review"
-        
+
         return {
             "final_risk_score": final_score,
             "recommendation": recommendation
         }
-    
+
     # Tool 4: Deprecated tool (shows lifecycle management)
     @registry.register_tool(
         name="old_fraud_checker",
@@ -152,7 +152,7 @@ def setup_tools():
     async def old_fraud_check(data: dict):
         """Old fraud checker (deprecated)."""
         return {"message": "This tool is deprecated. Use fraud_detector_v2 instead."}
-    
+
     return registry
 
 
@@ -162,9 +162,9 @@ async def example_1_semantic_search():
     print("Example 1: Semantic Tool Search")
     print("=" * 70)
     print()
-    
+
     registry = setup_tools()
-    
+
     # Natural language queries
     queries = [
         "detect fraudulent transactions",
@@ -172,11 +172,11 @@ async def example_1_semantic_search():
         "calculate risk for financial decision",
         "analyze transaction patterns"
     ]
-    
+
     for query in queries:
         print(f"📝 Query: \"{query}\"")
         tools = registry.search_tools(query, top_k=2)
-        
+
         if tools:
             print(f"   Found {len(tools)} relevant tools:")
             for tool in tools:
@@ -194,21 +194,21 @@ async def example_2_capability_search():
     print("Example 2: Capability-Based Search")
     print("=" * 70)
     print()
-    
+
     registry = setup_tools()
-    
+
     # Find all capabilities
     capabilities = registry.list_capabilities()
     print(f"📋 Available capabilities ({len(capabilities)}):")
     for cap in capabilities:
         print(f"   - {cap}")
     print()
-    
+
     # Search by specific capability
     capability = "fraud_detection"
     print(f"🔍 Tools with capability: {capability}")
     tools = registry.find_by_capability(capability)
-    
+
     for tool in tools:
         print(f"   - {tool.name} (v{tool.version})")
         print(f"     Status: {tool.status.value}")
@@ -224,11 +224,11 @@ async def example_3_cost_optimization():
     print("Example 3: Cost-Aware Tool Selection")
     print("=" * 70)
     print()
-    
+
     registry = setup_tools()
-    
+
     capability = "risk_analysis"
-    
+
     # Find cheapest tool
     cheapest = registry.get_cheapest_tool(capability)
     if cheapest:
@@ -237,7 +237,7 @@ async def example_3_cost_optimization():
         print(f"   Cost: ${cheapest.estimated_cost:.4f} per call")
         print(f"   Latency: {cheapest.estimated_latency_ms}ms")
     print()
-    
+
     # Find fastest tool
     fastest = registry.get_fastest_tool(capability)
     if fastest:
@@ -254,20 +254,20 @@ async def example_4_lifecycle_management():
     print("Example 4: Lifecycle Management")
     print("=" * 70)
     print()
-    
+
     registry = setup_tools()
-    
+
     # Get active tools only
     active_tools = registry.get_active_tools()
     print(f"✅ Active tools: {len(active_tools)}")
     for tool in active_tools:
         print(f"   - {tool.name} (v{tool.version})")
     print()
-    
+
     # Find deprecated tools
     all_tools = list(registry.tools.values())
     deprecated_tools = [t for t in all_tools if t.deprecated]
-    
+
     print(f"⚠️  Deprecated tools: {len(deprecated_tools)}")
     for tool in deprecated_tools:
         print(f"   - {tool.name} (v{tool.version})")
@@ -282,12 +282,12 @@ async def example_5_detailed_info():
     print("Example 5: Detailed Tool Information")
     print("=" * 70)
     print()
-    
+
     registry = setup_tools()
-    
+
     tool_name = "fraud_detector_v2"
     info = registry.get_tool_info(tool_name)
-    
+
     if info:
         print(f"📄 Tool: {tool_name}")
         print(f"   Version: {info['version']}")
@@ -312,18 +312,18 @@ async def example_6_registry_export():
     print("Example 6: Registry Export")
     print("=" * 70)
     print()
-    
+
     registry = setup_tools()
-    
+
     # Export registry
     export = registry.export_registry()
-    
+
     print(f"📦 Registry Export:")
     print(f"   Total tools: {len(export['tools'])}")
     print(f"   Capabilities: {len(export['capabilities'])}")
     print(f"   Categories: {len(export['categories'])}")
     print()
-    
+
     print(f"   All categories: {', '.join(export['categories'])}")
     print(f"   All capabilities:")
     for cap in export['capabilities'][:5]:
@@ -340,7 +340,7 @@ async def main():
     print("🔧 Dynamic Tool Registry Examples")
     print("🔧 " + "=" * 68)
     print("\n")
-    
+
     try:
         await example_1_semantic_search()
         await example_2_capability_search()
@@ -348,13 +348,13 @@ async def main():
         await example_4_lifecycle_management()
         await example_5_detailed_info()
         await example_6_registry_export()
-        
+
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
         traceback.print_exc()
         return
-    
+
     print("=" * 70)
     print("✨ All examples completed successfully!")
     print("=" * 70)
@@ -375,4 +375,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

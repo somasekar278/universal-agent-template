@@ -16,4 +16,3 @@ def get_trace_context() -> TraceContext:
 def set_trace_context(context: TraceContext):
     """Set trace context."""
     pass
-
