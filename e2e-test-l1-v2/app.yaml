@@ -1,4 +1,0 @@
-command: ['python', 'app.py']
-env:
-  - name: DATABRICKS_HOST
-    value: "{{workspace.host}}"
