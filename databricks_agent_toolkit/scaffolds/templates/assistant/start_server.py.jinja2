@@ -7,26 +7,22 @@ import yaml
 import uuid
 from pathlib import Path
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from mlflow.server import AgentServer
-from agent import agent
-import json
+from mlflow.genai.agent_server.server import AgentServer
+import agent  # Import to register @invoke/@stream decorators
+from memory_manager import MemoryManager
 
 # Load config
 config = yaml.safe_load((Path(__file__).parent / "config.yaml").read_text())
 PORT = int(os.getenv('DATABRICKS_APP_PORT', 8000))
+STREAMING = config["model"].get("streaming", False)
 
-# Create FastAPI app
-app = FastAPI(
-    title="{{ name }}",
-    description="OpenAI API compatible assistant with memory, built with Databricks Agent Toolkit",
-    version="0.2.0",
-    docs_url="/docs",  # Swagger UI
-    openapi_url="/openapi.json"  # OpenAPI schema
-)
+# Create AgentServer (automatically discovers @invoke/@stream decorated functions)
+agent_server = AgentServer("ResponsesAgent")
+app = agent_server.app
 
-# CORS
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -34,28 +30,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# OpenAI API compatible invocations endpoint
-@app.post("/api/invocations")
-async def invocations(request: Request):
-    """OpenAI API compatible invocations endpoint"""
-    data = await request.json()
-    messages = data.get("input", [])
-    stream = data.get("stream", False)
-    session_id = data.get("session_id")
-
-    if stream:
-        async def generate():
-            # predict() returns an async generator when stream=True
-            async for chunk in agent.predict(messages, stream=True, session_id=session_id):
-                yield f"data: {json.dumps(chunk)}\n\n"
-            yield "data: [DONE]\n\n"
-
-        return StreamingResponse(generate(), media_type="text/event-stream")
-    else:
-        # predict() returns a coroutine when stream=False
-        result = await agent.predict(messages, stream=False, session_id=session_id)
-        return result
 
 # Session management endpoints
 @app.post("/api/session/init")
@@ -69,7 +43,7 @@ async def clear_session(request: Request):
     data = await request.json()
     session_id = data.get("session_id")
     if session_id:
-        agent.clear_session(session_id)
+        agent.memory.clear_session(session_id)
     return {"status": "cleared"}
 
 # Health endpoint
@@ -222,4 +196,5 @@ if __name__ == "__main__":
     print(f"🚀 Starting {{ name }} on port {PORT}")
     print(f"🤖 Model: {config['model']['endpoint']}")
     print(f"💾 Memory: Lakebase")
+    print(f"🔄 Streaming: {'enabled' if STREAMING else 'disabled'}")
     uvicorn.run(app, host="0.0.0.0", port=PORT)

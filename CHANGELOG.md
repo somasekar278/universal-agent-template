@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.1] - 2026-01-06
+
+### Fixed
+- ✅ Correct import path for MLflow AgentServer: `mlflow.genai.agent_server.server`
+- ✅ Updated requirements to `mlflow>=3.6.0` for full AgentServer support
+- ✅ Fixed session management in L2 assistant templates
+- ✅ Improved async handling in `@invoke` and `@stream` decorators
+
+### Changed
+- Refactored both L1 (chatbot) and L2 (assistant) to use official `@invoke`/`@stream` pattern
+- Removed all manual `/api/invocations` implementations (AgentServer auto-handles)
+- Simplified server initialization with AgentServer auto-discovery of decorators
+
 ## [0.2.0] - 2026-01-06
 
 ### Added
