@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.2.2] - 2026-01-06
+
+### Fixed
+- ✅ Correct ResponsesAgent output format: `{"type": "message", "content": [{"type": "output_text", "text": "..."}]}`
+- ✅ Added required `id` field to output messages
+- ✅ Fixed `/invocations` endpoint (not `/api/invocations`)
+- ✅ Fixed JavaScript to parse nested ResponsesAgent format: `data.output[0].content[0].text`
+- ✅ Both streaming and non-streaming modes now work end-to-end
+
+### Changed
+- Optimized `agent.py` from 100 to 89 lines (11% reduction)
+- Removed debug error handling for cleaner production code
+- Simplified message extraction logic
+
+### Verified
+- ✅ Non-streaming: Returns complete response instantly
+- ✅ Streaming: Word-by-word with configurable 50ms delay
+- ✅ API tested with curl before deployment
+- ✅ Deployed and tested on Databricks Apps
+
 ## [0.2.1] - 2026-01-06
 
 ### Fixed
