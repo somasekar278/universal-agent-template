@@ -110,9 +110,9 @@ dbat generate chatbot my-bot
 ```
 
 **Features:**
-- 💬 OpenAI API compatible (`/api/invocations`)
+- 💬 OpenAI API compatible via MLflow AgentServer (`/invocations`)
 - 🔄 Streaming with Server-Sent Events (SSE)
-- 📊 MLflow auto-tracing
+- 📊 MLflow auto-tracing (requires mlflow>=3.6.0)
 - 🎛️ Configuration-driven (no code changes to switch models)
 - 🚀 One-command deploy to Databricks Apps
 - 📝 Built-in web UI (or use official templates)
@@ -198,7 +198,7 @@ Your agent backend is **100% compatible** with all official Databricks UI templa
 | **Next.js** | Modern production, SSR | [e2e-chatbot-app-next](https://github.com/databricks/app-templates/tree/main/e2e-chatbot-app-next) |
 
 **Why compatible?**
-We follow the **OpenAI API standard** that all these UIs expect (`/api/invocations` endpoint).
+We follow the **OpenAI API standard** via MLflow AgentServer (`/invocations` endpoint).
 
 **Using official UIs:**
 ```bash
@@ -237,22 +237,24 @@ Your agent comes with **auto-generated OpenAPI documentation**:
 import requests
 
 response = requests.post(
-    "http://localhost:8000/api/invocations",
+    "http://localhost:8000/invocations",
     json={
         "input": [{"role": "user", "content": "Hello!"}],
         "stream": False
     }
 )
-print(response.json()["output"][0]["content"])
+# ResponsesAgent format: data.output[0].content[0].text
+print(response.json()["output"][0]["content"][0]["text"])
 ```
 
 ### Streaming Example
 
 ```python
 import requests
+import json
 
 response = requests.post(
-    "http://localhost:8000/api/invocations",
+    "http://localhost:8000/invocations",
     json={
         "input": [{"role": "user", "content": "Tell me a story"}],
         "stream": True
@@ -262,9 +264,11 @@ response = requests.post(
 
 for line in response.iter_lines():
     if line.startswith(b"data: "):
-        token = line[6:].decode('utf-8')
-        if token != "[DONE]":
-            print(token, end="", flush=True)
+        data = line[6:].decode('utf-8')
+        if data != "[DONE]":
+            chunk = json.loads(data)
+            # ResponsesAgent streaming format: chunk.content
+            print(chunk.get("content", ""), end="", flush=True)
 ```
 
 ---
