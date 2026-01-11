@@ -211,28 +211,214 @@ Generated using **Databricks Agent Toolkit** with official {ui.capitalize()} tem
 
         print(f"💾 Integrating memory for {ui}...")
 
-        # 1. Copy memory_manager.py
-        # TODO: Copy from toolkit's memory module
+        # Only Streamlit is supported for L2
+        if ui != "streamlit":
+            print(f"⚠️  Memory not supported for {ui} - only Streamlit has memory support")
+            return
 
-        # 2. Update app.py to use memory
-        # For Streamlit: Wrap st.session_state with MemoryManager
-        # For Dash: Add memory callbacks
-        # For Gradio: Use Gradio State with MemoryManager backend
+        # 1. Copy memory_manager.py from templates
+        self._copy_memory_manager(output_dir)
 
-        # 3. Add Lakebase config to app.yaml env vars
-        # LAKEBASE_HOST, LAKEBASE_DATABASE, etc.
+        # 2. Update app.py for memory persistence
+        self._inject_memory_into_streamlit(output_dir)
 
-        # 4. Add UI components for memory
-        # - Clear history button
-        # - Session management
-        # - Conversation history sidebar
+        # 3. Add Lakebase config to app.yaml
+        self._add_lakebase_env_vars(output_dir)
 
-        print("⚠️  Memory integration not yet implemented")
-        print("   Placeholder methods created - needs implementation")
-        print("   Framework-specific integration required:")
-        print(f"   - {ui}: Update session state/callbacks")
-        print("   - Add Lakebase connection")
-        print("   - Inject memory UI components")
+        # 4. Update requirements.txt
+        self._add_memory_dependencies(output_dir)
+
+        print("✅ Memory integration complete")
+
+    def _copy_memory_manager(self, output_dir: Path) -> None:
+        """Copy memory_manager.py to the output directory."""
+        # Get memory_manager template
+        template_path = Path(__file__).parent / "templates" / "assistant" / "memory_manager.py.jinja2"
+        
+        if not template_path.exists():
+            raise FileNotFoundError(f"Memory manager template not found: {template_path}")
+        
+        # Copy as memory_manager.py (remove .jinja2 extension for now)
+        dest_path = output_dir / "memory_manager.py"
+        shutil.copy(template_path, dest_path)
+        print("✅ Added memory_manager.py")
+
+    def _inject_memory_into_streamlit(self, output_dir: Path) -> None:
+        """Inject MemoryManager into Streamlit app.py."""
+        app_py_path = output_dir / "app.py"
+        if not app_py_path.exists():
+            print("⚠️  app.py not found, skipping memory injection")
+            return
+        
+        content = app_py_path.read_text()
+        
+        # Add memory_manager import
+        import_block = """from memory_manager import MemoryManager, generate_session_id
+"""
+        
+        if "from memory_manager import" not in content:
+            # Add after existing imports
+            content = content.replace(
+                "from collections import OrderedDict",
+                f"from collections import OrderedDict\n{import_block}"
+            )
+        
+        # Initialize MemoryManager after SERVING_ENDPOINT check
+        memory_init = """
+# Initialize Memory Manager for conversation persistence
+try:
+    memory_manager = MemoryManager()
+    print("✅ Memory initialized")
+except Exception as e:
+    print(f"⚠️  Memory initialization failed: {e}")
+    print("   Falling back to in-memory history only")
+    memory_manager = None
+"""
+        
+        if "memory_manager = MemoryManager()" not in content:
+            content = content.replace(
+                "ENDPOINT_SUPPORTS_FEEDBACK = endpoint_supports_feedback(SERVING_ENDPOINT)",
+                f"ENDPOINT_SUPPORTS_FEEDBACK = endpoint_supports_feedback(SERVING_ENDPOINT)\n{memory_init}"
+            )
+        
+        # Update session state initialization to use persistent session_id
+        session_init = """# --- Init state ---
+if "session_id" not in st.session_state:
+    st.session_state.session_id = generate_session_id()
+    print(f"🔍 New session: {st.session_state.session_id}")
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# Load persistent history from memory if available
+if "history_loaded" not in st.session_state and memory_manager:
+    try:
+        # Load previous messages from database
+        db_messages = memory_manager.get_history(st.session_state.session_id)
+        if db_messages:
+            print(f"📜 Loaded {len(db_messages)} messages from memory")
+            # Convert DB format to UI format
+            for msg in db_messages:
+                if msg["role"] == "user":
+                    st.session_state.history.append(UserMessage(content=msg["content"]))
+                elif msg["role"] == "assistant":
+                    st.session_state.history.append(AssistantResponse(
+                        messages=[{"role": "assistant", "content": msg["content"]}],
+                        request_id=None
+                    ))
+        st.session_state.history_loaded = True
+    except Exception as e:
+        print(f"⚠️  Could not load history: {e}")
+        st.session_state.history_loaded = True
+"""
+        
+        if "if \"history\" not in st.session_state:" in content:
+            content = content.replace(
+                """# --- Init state ---
+if "history" not in st.session_state:
+    st.session_state.history = []""",
+                session_init
+            )
+        
+        # Add memory persistence for user messages (inject after user_msg.render())
+        user_store = """
+    
+    # Store user message in persistent memory
+    if memory_manager:
+        try:
+            memory_manager.store_message(
+                session_id=st.session_state.session_id,
+                role="user",
+                content=prompt
+            )
+            print(f"💾 Stored user message (session: {st.session_state.session_id})")
+        except Exception as e:
+            print(f"⚠️  Could not store user message: {e}")"""
+        
+        if "user_msg.render(" in content and "# Store user message" not in content:
+            content = content.replace(
+                "user_msg.render(len(st.session_state.history) - 1)",
+                f"user_msg.render(len(st.session_state.history) - 1){user_store}"
+            )
+        
+        # Add memory persistence for assistant messages (inject after append(assistant_response))
+        assistant_store = """
+    
+    # Store assistant response in persistent memory
+    if memory_manager and assistant_response.messages:
+        try:
+            # Extract text content from assistant response
+            assistant_content = ""
+            for msg in assistant_response.messages:
+                if isinstance(msg, dict) and msg.get("role") == "assistant":
+                    assistant_content += msg.get("content", "")
+            
+            if assistant_content:
+                memory_manager.store_message(
+                    session_id=st.session_state.session_id,
+                    role="assistant",
+                    content=assistant_content
+                )
+                print(f"💾 Stored assistant message (session: {st.session_state.session_id})")
+        except Exception as e:
+            print(f"⚠️  Could not store assistant message: {e}")"""
+        
+        if "st.session_state.history.append(assistant_response)" in content and "# Store assistant response" not in content:
+            content = content.replace(
+                "st.session_state.history.append(assistant_response)",
+                f"st.session_state.history.append(assistant_response){assistant_store}"
+            )
+        
+        app_py_path.write_text(content)
+        print("✅ Injected memory into app.py")
+
+    def _add_lakebase_env_vars(self, output_dir: Path) -> None:
+        """Add Lakebase environment variables to app.yaml."""
+        app_yaml_path = output_dir / "app.yaml"
+        if not app_yaml_path.exists():
+            print("⚠️  app.yaml not found, skipping Lakebase config")
+            return
+        
+        content = app_yaml_path.read_text()
+        
+        # Add Lakebase env vars
+        lakebase_env = """  - name: "LAKEBASE_HOST"
+    value: "your-lakebase-host.cloud.databricks.com"  # Update with your Lakebase host
+  - name: "LAKEBASE_DATABASE"
+    value: "agents"  # Update with your database name
+  - name: "LAKEBASE_USER"
+    value: "your_user"  # Update with your username
+  - name: "LAKEBASE_PASSWORD"
+    value: "your_password"  # Update with your password (or use secrets)
+  - name: "PGSSLMODE"
+    value: "require"
+  - name: "PGCHANNELBINDING"
+    value: "prefer"
+"""
+        
+        # Add after SERVING_ENDPOINT
+        if "LAKEBASE_HOST" not in content:
+            content = content.replace(
+                'value: "databricks-claude-sonnet-4"',
+                f'value: "databricks-claude-sonnet-4"\n{lakebase_env}'
+            )
+            app_yaml_path.write_text(content)
+            print("✅ Added Lakebase configuration to app.yaml")
+            print("⚠️  Update app.yaml with your Lakebase credentials")
+
+    def _add_memory_dependencies(self, output_dir: Path) -> None:
+        """Add memory dependencies to requirements.txt."""
+        req_path = output_dir / "requirements.txt"
+        if not req_path.exists():
+            print("⚠️  requirements.txt not found")
+            return
+        
+        content = req_path.read_text()
+        
+        if "psycopg2-binary" not in content:
+            content += "\n# Memory dependencies\npsycopg2-binary>=2.9.9\n"
+            req_path.write_text(content)
+            print("✅ Added psycopg2-binary to requirements.txt")
 
     def integrate_rag(self, output_dir: Path, rag_config: Dict[str, Any]) -> None:
         """Add RAG capabilities to the template (for L2+)."""
@@ -269,7 +455,7 @@ def generate_with_databricks_template(name: str, level: str, options: Dict[str, 
 
     # Add memory if L2+
     if level == "assistant":
-        memory_config = {}  # TODO: Extract from options
+        memory_config = {"ui": ui}
         integrator.integrate_memory(output_path, memory_config)
 
     # Add RAG if enabled
