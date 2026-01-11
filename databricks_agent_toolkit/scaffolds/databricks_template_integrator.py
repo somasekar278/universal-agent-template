@@ -132,11 +132,14 @@ targets:
         # 1. Update app.yaml with model endpoint
         self._update_app_yaml(output_dir, model)
 
-        # 2. Strip L2 features if generating L1
+        # 2. Suppress noisy logs from libraries
+        self._suppress_debug_logs(output_dir, ui)
+
+        # 3. Strip L2 features if generating L1
         if level == "chatbot":
             self._strip_memory_features(output_dir, ui)
 
-        # 3. Update README
+        # 4. Update README
         self._update_readme(output_dir, ui, model, level)
 
         print(f"✅ Template customized for model: {model}")
@@ -158,6 +161,33 @@ targets:
         elif "SERVING_ENDPOINT" in content:
             print(f"⚠️  SERVING_ENDPOINT found but in unexpected format")
             print(f"   Manually set to: {model}")
+
+    def _suppress_debug_logs(self, output_dir: Path, ui: str) -> None:
+        """Suppress noisy DEBUG logs from Databricks SDK and other libraries."""
+        if ui != "streamlit":
+            return  # Only implemented for Streamlit for now
+        
+        app_py_path = output_dir / "app.py"
+        if not app_py_path.exists():
+            return
+        
+        content = app_py_path.read_text()
+        
+        # Add logging suppression after logger initialization
+        logging_config = """
+# Suppress verbose logs from Databricks SDK and other libraries
+logging.getLogger("databricks.sdk").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("watchdog").setLevel(logging.WARNING)
+"""
+        
+        if "databricks.sdk" not in content and "logger = logging.getLogger(__name__)" in content:
+            content = content.replace(
+                "logger = logging.getLogger(__name__)",
+                f"logger = logging.getLogger(__name__){logging_config}"
+            )
+            app_py_path.write_text(content)
+            print("✅ Suppressed noisy DEBUG logs")
 
     def _strip_memory_features(self, output_dir: Path, ui: str) -> None:
         """Remove memory-related UI components for L1 chatbots."""
