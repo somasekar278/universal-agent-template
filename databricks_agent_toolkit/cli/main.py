@@ -55,10 +55,6 @@ Examples:
   dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui gradio     # Batch only
   dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui dash       # Batch only
 
-  # L2 Assistant - Streamlit only (memory + streaming require session state)
-  dat generate assistant my-assistant                    # Uses Streamlit by default
-  dat generate assistant doc-bot --enable-rag            # With RAG support
-
   # Check authentication
   dat auth check
 
@@ -81,9 +77,7 @@ For more info: https://github.com/databricks/databricks-agent-toolkit
 
     # Generate command
     generate_parser = subparsers.add_parser("generate", help="Generate agent scaffolds")
-    generate_parser.add_argument(
-        "level", choices=["chatbot", "assistant", "api", "workflow", "system"], help="Agent type to generate"
-    )
+    generate_parser.add_argument("level", choices=["chatbot"], help="Agent type to generate")
     generate_parser.add_argument("name", help="Agent name")
     generate_parser.add_argument(
         "--model",
@@ -154,15 +148,7 @@ def handle_generate(args):
     streaming_status = "✅ streaming" if args.ui == "streamlit" else "⚠️  batch only"
     print(f"   UI: {args.ui} ({streaming_status})")
     if hasattr(args, "enable_rag") and args.enable_rag:
-        print(f"   RAG: enabled")
-
-    # Validate L2+ requires Streamlit (official templates only support memory + streaming in Streamlit)
-    if args.level in ["assistant", "planner", "agentic_rag"] and args.ui != "streamlit":
-        print(f"\n❌ {args.level.upper()} (L2+) requires Streamlit UI")
-        print(f"   Reason: Official Databricks templates only support memory + streaming in Streamlit")
-        print(f"   Gradio/Dash lack built-in session persistence and streaming")
-        print(f"\n💡 Use: dat generate {args.level} {args.name} --ui streamlit")
-        sys.exit(1)
+        print("   RAG: enabled")
 
     try:
         generator = ScaffoldGenerator()
@@ -183,12 +169,12 @@ def handle_generate(args):
             output_dir=output_dir,
             options=options,
         )
-        print(f"\n✅ Generated successfully!")
-        print(f"\n📋 Next steps:")
+        print("\n✅ Generated successfully!")
+        print("\n📋 Next steps:")
         print(f"   1. Test locally:   dat test {output_dir}")
         print(f"   2. Deploy:         cd {output_dir} && databricks bundle deploy")
-        print(f"   3. Run:            databricks bundle run")
-        print(f"   4. View:           Check Databricks Apps UI")
+        print("   3. Run:            databricks bundle run")
+        print("   4. View:           Check Databricks Apps UI")
         print(f"\n📖 See {output_dir}/README.md for details")
     except Exception as e:
         print(f"\n❌ Error: {e}")
@@ -209,12 +195,12 @@ def handle_test(args):
 
     # Check if it's a valid agent app
     if not (app_path / "start_server.py").exists() and not (app_path / "agent.py").exists():
-        print(f"❌ Not a valid agent directory (missing start_server.py or agent.py)")
+        print("❌ Not a valid agent directory (missing start_server.py or agent.py)")
         print(f"   Directory: {app_path}")
         sys.exit(1)
 
     print(f"\n🧪 Testing agent: {app_path.name}")
-    print(f"   Running code validation (no server required)...")
+    print("   Running code validation (no server required)...")
     print()
 
     # Check if pytest is available

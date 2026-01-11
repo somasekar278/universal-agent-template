@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.1] - 2026-01-11
+
+### 🧹 Cleanup: Removed Broken L2 Memory Implementation
+
+### Removed
+- **L2 Assistant (broken memory approach)**: Removed broken `psycopg2`-based memory implementation that didn't work in Databricks Apps environment
+- **`memory_manager.py.jinja2` template**: Deleted broken template
+- **Memory integration code**: Cleaned up `databricks_template_integrator.py`
+- **`assistant` CLI option**: Temporarily removed until proper RAG implementation
+
+### Rationale
+- The initial L2 memory approach using direct `psycopg2` connections was misaligned with Databricks Agent Framework
+- Official Databricks approach for persistent memory uses LangGraph's `CheckpointSaver` at L3+ level
+- L2 will be redefined as **RAG (Retrieval Augmented Generation)** instead of memory
+- This cleanup sets foundation for proper RAG implementation
+
+### Current Status
+- ✅ **L1 (Chatbot)**: Production-ready with Streamlit/Gradio/Dash UI support
+- 🚧 **L2 (RAG Chatbot)**: Coming next - Vector Search (Databricks + Lakebase pgvector)
+- 🔮 **L3 (Agent with Memory)**: Future - LangGraph-based agents with proper persistent memory
+
+---
+
 ## [0.3.0] - 2026-01-11
 
 ### 🎉 Major Release: Official Databricks UI Templates Integration

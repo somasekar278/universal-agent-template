@@ -126,24 +126,11 @@ dbat generate chatbot my-bot
 
 ---
 
-### **L2: Assistant (With Memory + RAG)**
+### **Coming Soon:**
 
-```bash
-dbat generate assistant my-assistant --enable-rag
-```
-
-**Everything in L1, plus:**
-- 💾 Conversation memory (Lakebase/PostgreSQL)
-- 🧠 RAG with pgvector or Databricks Vector Search
-- 📁 Auto-index documents from Unity Catalog Volumes
-- 🔐 Session management
-- 👥 Multi-user support
-
-**Perfect for:**
-- Knowledge base assistants
-- Document Q&A
-- Support bots with history
-- Enterprise applications
+- **L2: RAG Chatbot** - Add Vector Search (Databricks or Lakebase pgvector) for knowledge base Q&A
+- **L3: Agent with Memory & Tools** - LangGraph-based agents with persistent memory and tool calling
+- **L4: Multi-Agent System** - Orchestrated agent workflows with specialized agents
 
 ---
 
@@ -164,19 +151,6 @@ model:
 mlflow:
   experiment: /Shared/my-bot
   auto_trace: true  # Automatic tracing of all LLM calls
-
-# L2 only: Memory configuration
-memory:
-  enabled: true
-  backend: lakebase
-  host: ${LAKEBASE_HOST}
-  database: ${LAKEBASE_DATABASE}
-
-# L2 only: RAG configuration
-rag:
-  enabled: true
-  source: /Volumes/main/default/docs  # Unity Catalog Volume
-  backend: pgvector  # or vector_search
   embedding_model: databricks-bge-large-en
 ```
 
@@ -224,14 +198,11 @@ cp -r app-templates/streamlit-chatbot-app my-bot/frontend
 dat generate chatbot my-bot --ui streamlit   # ✅ Streaming support
 dat generate chatbot my-bot --ui gradio      # Batch only
 dat generate chatbot my-bot --ui dash        # Batch only
-
-# L2 Assistant - Streamlit only (memory + streaming require session state)
-dat generate assistant my-assistant          # Auto-uses Streamlit
 ```
 
 **Framework Support:**
 - **L1 (Chatbot)**: Streamlit, Gradio, Dash - all supported
-- **L2+ (Assistant/RAG)**: Streamlit only - official templates only support memory + streaming in Streamlit
+- **L2+ (Coming Soon)**: RAG and Agent features
 
 See [UI Integration Guide](docs/UI_FRAMEWORK_INTEGRATION.md) for details.
 
