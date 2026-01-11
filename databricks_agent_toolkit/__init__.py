@@ -32,7 +32,7 @@ Example:
     response = await llm.chat(messages=[...])
 """
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __author__ = "Databricks Agent Toolkit Team"
 
 # Core integrations (lazy-loaded to avoid requiring optional dependencies)

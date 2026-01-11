@@ -35,9 +35,31 @@ stream_delay_ms = config["model"].get("token_delay_ms", 50) / 1000.0
 
 print(f"🤖 Agent initialized: {endpoint}")
 
+{% if streaming %}
+
+@stream()
+async def stream_handler(request: dict):
+    """Streaming invocation handler."""
+    # Extract messages from request
+    input_messages = request.get("input", [])
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(input_messages)
+
+    # Call LLM (non-streaming, then simulate streaming for demo)
+    response = llm_client.predict(
+        endpoint=endpoint,
+        inputs={"messages": messages, "temperature": temperature, "max_tokens": max_tokens}
+    )
+    content = response["choices"][0]["message"]["content"]
+
+    # Stream with configurable delay
+    for word in content.split():
+        yield {"role": "assistant", "content": word + " "}
+        await asyncio.sleep(stream_delay_ms)
+{% else %}
 
 @invoke()
-async def invoke_handler(request) -> ResponsesAgentResponse:
+def invoke_handler(request) -> ResponsesAgentResponse:
     """Non-streaming invocation handler."""
     # Extract messages (handles both dict and ResponsesAgentRequest)
     input_messages = request.get("input", []) if isinstance(request, dict) else request.input
@@ -67,24 +89,4 @@ async def invoke_handler(request) -> ResponsesAgentResponse:
             "content": [{"type": "output_text", "text": content}]
         }]
     )
-
-
-@stream()
-async def stream_handler(request: dict):
-    """Streaming invocation handler."""
-    # Extract messages from request
-    input_messages = request.get("input", [])
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(input_messages)
-
-    # Call LLM (non-streaming, then simulate streaming for demo)
-    response = llm_client.predict(
-        endpoint=endpoint,
-        inputs={"messages": messages, "temperature": temperature, "max_tokens": max_tokens}
-    )
-    content = response["choices"][0]["message"]["content"]
-
-    # Stream with configurable delay
-    for word in content.split():
-        yield {"role": "assistant", "content": word + " "}
-        await asyncio.sleep(stream_delay_ms)
+{% endif %}

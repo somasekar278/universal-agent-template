@@ -42,18 +42,32 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # WORKFLOW: Generate → Deploy → Run → View
+
+  # 1. Generate chatbot with Streamlit UI (default)
+  dat generate chatbot my-bot
+
+  # 2. Deploy to Databricks
+  cd my-bot && databricks bundle deploy && databricks bundle run
+
+  # Generate with custom model and UI framework
+  dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui streamlit  # Streaming ✅
+  dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui gradio     # Simple UI
+  dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui dash       # Dash UI
+
+  # Generate assistant with memory (L2)
+  dat generate assistant my-assistant
+
+  # Generate assistant with RAG enabled
+  dat generate assistant doc-bot --enable-rag
+
   # Check authentication
-  databricks-agent-toolkit auth check
-
-  # Generate chatbot (L1 - Simple)
-  databricks-agent-toolkit generate chatbot my-bot
-
-  # Generate assistant (L2 - With Memory)
-  databricks-agent-toolkit generate assistant my-assistant
+  dat auth check
 
   # Get help on specific commands
-  databricks-agent-toolkit generate --help
+  dat generate --help
 
+Uses official Databricks UI templates (Streamlit, Gradio, Dash) - zero custom frontend!
 More scaffolds (api, workflow, system) coming in future releases!
 For more info: https://github.com/databricks/databricks-agent-toolkit
         """,
@@ -67,12 +81,31 @@ For more info: https://github.com/databricks/databricks-agent-toolkit
     auth_parser = subparsers.add_parser("auth", help="Check Databricks authentication")
     auth_parser.add_argument("action", choices=["check"], help="Authentication action")
 
-    # Generate command (placeholder)
+    # Generate command
     generate_parser = subparsers.add_parser("generate", help="Generate agent scaffolds")
     generate_parser.add_argument(
         "level", choices=["chatbot", "assistant", "api", "workflow", "system"], help="Agent type to generate"
     )
     generate_parser.add_argument("name", help="Agent name")
+    generate_parser.add_argument(
+        "--model",
+        default="databricks-claude-sonnet-4",
+        help="Model endpoint name (default: databricks-claude-sonnet-4)",
+    )
+    generate_parser.add_argument(
+        "--enable-rag", action="store_true", help="Enable RAG capabilities (L2 assistant only)"
+    )
+    generate_parser.add_argument(
+        "--ui",
+        choices=["streamlit", "gradio", "dash", "fastapi", "none"],
+        default="streamlit",
+        help="UI framework (default: streamlit). Note: Only Streamlit supports streaming. Gradio and Dash use batch responses.",
+    )
+    generate_parser.add_argument("--output-dir", help="Custom output directory (default: ./<name>)")
+
+    # Test command
+    test_parser = subparsers.add_parser("test", help="Validate agent code before deploying")
+    test_parser.add_argument("app_dir", help="Path to agent directory (e.g., ./my-bot)")
 
     # Parse arguments
     args = parser.parse_args()
@@ -87,6 +120,8 @@ For more info: https://github.com/databricks/databricks-agent-toolkit
         handle_auth(args)
     elif args.command == "generate":
         handle_generate(args)
+    elif args.command == "test":
+        handle_test(args)
     else:
         parser.print_help()
 
@@ -117,18 +152,98 @@ def handle_generate(args):
     from databricks_agent_toolkit.scaffolds import ScaffoldGenerator
 
     print(f"\n🚀 Generating {args.level} scaffold: {args.name}")
+    print(f"   Model: {args.model}")
+    streaming_status = "✅ streaming" if args.ui == "streamlit" else "⚠️  batch only"
+    print(f"   UI: {args.ui} ({streaming_status})")
+    if hasattr(args, "enable_rag") and args.enable_rag:
+        print(f"   RAG: enabled")
 
     try:
         generator = ScaffoldGenerator()
+        output_dir = args.output_dir if hasattr(args, "output_dir") and args.output_dir else f"./{args.name}"
+
+        options = {
+            "model": args.model,
+            "ui": args.ui,
+        }
+
+        # Add RAG option if specified (L2 only)
+        if hasattr(args, "enable_rag") and args.enable_rag:
+            options["enable_rag"] = True
+
         generator.generate(
             level=args.level,
             name=args.name,
-            output_dir=f"./{args.name}",
-            options={"model": "databricks-claude-sonnet-4-5"},
+            output_dir=output_dir,
+            options=options,
         )
-        print(f"\n✅ Generated successfully! See ./{args.name}/README.md")
+        print(f"\n✅ Generated successfully!")
+        print(f"\n📋 Next steps:")
+        print(f"   1. Test locally:   dat test {output_dir}")
+        print(f"   2. Deploy:         cd {output_dir} && databricks bundle deploy")
+        print(f"   3. Run:            databricks bundle run")
+        print(f"   4. View:           Check Databricks Apps UI")
+        print(f"\n📖 See {output_dir}/README.md for details")
     except Exception as e:
         print(f"\n❌ Error: {e}")
+
+
+def handle_test(args):
+    """Handle test commands."""
+    import os
+    import subprocess
+    from pathlib import Path
+
+    app_path = Path(args.app_dir).resolve()
+
+    # Check if directory exists
+    if not app_path.exists():
+        print(f"❌ Directory not found: {app_path}")
+        sys.exit(1)
+
+    # Check if it's a valid agent app
+    if not (app_path / "start_server.py").exists() and not (app_path / "agent.py").exists():
+        print(f"❌ Not a valid agent directory (missing start_server.py or agent.py)")
+        print(f"   Directory: {app_path}")
+        sys.exit(1)
+
+    print(f"\n🧪 Testing agent: {app_path.name}")
+    print(f"   Running code validation (no server required)...")
+    print()
+
+    # Check if pytest is available
+    try:
+        subprocess.run(["pytest", "--version"], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("❌ pytest not found. Install it:")
+        print("   pip install pytest")
+        sys.exit(1)
+
+    # Set environment variable for test
+    env = os.environ.copy()
+    env["TEST_APP_DIR"] = str(app_path)
+
+    # Run code structure tests (works for all apps - no server needed)
+    result = subprocess.run(
+        ["pytest", "tests/test_code_structure.py", "-v", "--tb=short"], env=env, cwd=Path(__file__).parent.parent.parent
+    )
+
+    print()
+    if result.returncode == 0:
+        print("✅ Code validation passed!")
+        print()
+        print("📋 Ready to deploy:")
+        print(f"   cd {app_path}")
+        print("   databricks bundle deploy")
+        print("   databricks bundle run")
+    else:
+        print("❌ Code validation failed!")
+        print()
+        print("💡 Fix these issues before deploying:")
+        print("   • Using /stream instead of /invocations endpoint")
+        print("   • Syntax errors in Python files")
+        print("   • Missing required files or configurations")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

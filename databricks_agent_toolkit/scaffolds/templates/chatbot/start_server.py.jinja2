@@ -65,12 +65,13 @@ CHAT_HTML = '''<!DOCTYPE html>
     <div id="chat-container">
         <div id="chat-box"></div>
         <div id="input-container">
-            <input type="text" id="input-box" placeholder="Type your message..." onkeypress="if(event.key==='Enter') sendMessage()">
-            <button id="send-btn" onclick="sendMessage()">Send</button>
+            <input type="text" id="input-box" placeholder="Type your message...">
+            <button id="send-btn">Send</button>
         </div>
     </div>
     <script>
-        const STREAMING = {% raw %}{{ streaming|lower }}{% endraw %};
+        const STREAMING = __STREAMING_PLACEHOLDER__;
+        console.log('🟢 Script loaded - STREAMING:', STREAMING);
 
         function addBubble(role, content) {
             const bubble = document.createElement('div');
@@ -81,7 +82,7 @@ CHAT_HTML = '''<!DOCTYPE html>
             return bubble;
         }
 
-        async function sendMessage() {
+        window.sendMessage = async function() {
             const input = document.getElementById('input-box');
             const sendBtn = document.getElementById('send-btn');
             const message = input.value.trim();
@@ -158,6 +159,14 @@ CHAT_HTML = '''<!DOCTYPE html>
                 }
             }
         }
+
+        // Attach event listeners
+        document.getElementById('send-btn').addEventListener('click', window.sendMessage);
+        document.getElementById('input-box').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                window.sendMessage();
+            }
+        });
     </script>
 </body>
 </html>'''
@@ -165,8 +174,14 @@ CHAT_HTML = '''<!DOCTYPE html>
 @app.get("/", response_class=HTMLResponse)
 async def ui():
     """Serve chat UI"""
-    return CHAT_HTML.replace('{% raw %}{{ model }}{% endraw %}', config["model"]["endpoint"]) \
-                    .replace('{% raw %}{{ streaming|lower }}{% endraw %}', str(STREAMING).lower())
+    from fastapi import Response
+    html = CHAT_HTML.replace('{% raw %}{{ model }}{% endraw %}', config["model"]["endpoint"]) \
+                    .replace('__STREAMING_PLACEHOLDER__', str(STREAMING).lower())
+    response = Response(content=html, media_type="text/html")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # Server entry point
 if __name__ == "__main__":

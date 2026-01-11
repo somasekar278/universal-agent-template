@@ -13,11 +13,7 @@ Documentation: https://docs.databricks.com/lakebase/
 """
 
 import os
-import time
 from typing import Any, Dict, List, Optional
-
-import requests
-from requests.auth import HTTPBasicAuth
 
 try:
     import psycopg2
@@ -124,24 +120,17 @@ class Lakebase:
             )
 
         # Support both LAKEBASE_* and PG* environment variables
+        # Note: PGUSER is reserved for OBO detection, so don't auto-use it for self.user
         self.host = host or os.getenv("LAKEBASE_HOST") or os.getenv("PGHOST")
         self.database = database or os.getenv("LAKEBASE_DATABASE") or os.getenv("PGDATABASE")
-        self.user = user or os.getenv("LAKEBASE_USER") or os.getenv("PGUSER")
+        self.user = user or os.getenv("LAKEBASE_USER")
         self.password = password or os.getenv("LAKEBASE_PASSWORD") or os.getenv("PGPASSWORD")
         self.port = port
-        self.sslmode = sslmode or os.getenv("PGSSLMODE", "prefer")
+        # Lakebase requires SSL - default to 'require' not 'prefer'
+        self.sslmode = sslmode or os.getenv("PGSSLMODE", "require")
         self.channel_binding = channel_binding or os.getenv("PGCHANNELBINDING", "prefer")
 
-        # OAuth M2M for Service Principal (Databricks Apps)
-        self.oauth_client_id = os.getenv("DATABRICKS_CLIENT_ID")
-        self.oauth_client_secret = os.getenv("DATABRICKS_CLIENT_SECRET")
-        self.databricks_host = os.getenv("DATABRICKS_HOST", "")
-        self._cached_token = None
-        self._token_expiry = 0
-
         # Determine authentication method
-        # For Provisioned Lakebase: Use OAuth Client ID as username + token as password
-        # For traditional: Use explicit username/password
         if self.user and self.password:
             # Explicit username/password provided
             if not all([self.host, self.database]):
@@ -152,63 +141,21 @@ class Lakebase:
                 )
             self.auth_method = "Username/Password"
             print("🔐 Using Username/Password authentication for Lakebase")
-        elif self.oauth_client_id and self.oauth_client_secret:
-            # OAuth M2M: Use client_id as username, token as password
-            if not all([self.host, self.database]):
-                raise ValueError(
-                    "Missing Lakebase connection info. Provide via arguments or environment variables:\n"
-                    "LAKEBASE_HOST/PGHOST, LAKEBASE_DATABASE/PGDATABASE"
-                )
-            self.auth_method = "OAuth M2M"
-            print("🔐 Using OAuth M2M authentication for Lakebase (client_id as username, token as password)")
         else:
             raise ValueError(
-                "Missing authentication. Provide either:\n"
-                "1. OAuth M2M: DATABRICKS_CLIENT_ID + DATABRICKS_CLIENT_SECRET (for Databricks Apps)\n"
-                "2. Username/Password: LAKEBASE_USER/PGUSER + LAKEBASE_PASSWORD/PGPASSWORD"
+                "Missing Lakebase credentials. Provide via arguments or environment variables:\n"
+                "LAKEBASE_HOST/PGHOST, LAKEBASE_DATABASE/PGDATABASE, "
+                "LAKEBASE_USER/PGUSER, LAKEBASE_PASSWORD/PGPASSWORD"
             )
 
         self.connection = None
 
-    def _get_oauth_token(self) -> str:
-        """Get OAuth token for Service Principal authentication."""
-        # Check if we have a valid cached token
-        if self._cached_token and time.time() < self._token_expiry:
-            return self._cached_token
-
-        # Get new token
-        token_url = f"{self.databricks_host}/oidc/v1/token"
-        response = requests.post(
-            token_url,
-            auth=HTTPBasicAuth(self.oauth_client_id, self.oauth_client_secret),
-            data={"grant_type": "client_credentials", "scope": "all-apis"},
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            timeout=30,
-        )
-        response.raise_for_status()
-
-        token_data = response.json()
-        self._cached_token = token_data["access_token"]
-        # Set expiry with 5 min buffer
-        self._token_expiry = time.time() + token_data.get("expires_in", 3600) - 300
-
-        return self._cached_token
-
     def connect(self):
         """Establish connection to Lakebase."""
         if self.connection is None or self.connection.closed:
-            # Get credentials based on auth method
-            if self.auth_method == "OAuth M2M":
-                # Use OAuth token as password
-                token = self._get_oauth_token()
-                # For Lakebase with OAuth, use the Service Principal client ID as username
-                # and the OAuth access token as password
-                conn_user = self.oauth_client_id
-                conn_password = token
-            else:
-                # Use provided username/password
-                conn_user = self.user
-                conn_password = self.password
+            # Use provided username/password
+            conn_user = self.user
+            conn_password = self.password
 
             # Build connection parameters
             conn_params = {

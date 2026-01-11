@@ -50,7 +50,7 @@ class ScaffoldGenerator:
             level: Agent type (chatbot, assistant, api, workflow, system)
             name: Agent name
             output_dir: Output directory path
-            options: Generation options (model, enable_mcp, etc.)
+            options: Generation options (model, enable_mcp, ui, etc.)
 
         Example:
             generator.generate(
@@ -60,11 +60,20 @@ class ScaffoldGenerator:
                 options={
                     "model": "databricks-claude-sonnet-4-5",
                     "workflow": "plan-act-critique",
-                    "enable_optimization": True
+                    "enable_optimization": True,
+                    "ui": "streamlit"
                 }
             )
         """
         options = options or {}
+
+        # Check if using official Databricks UI templates
+        ui = options.get("ui", "fastapi")
+        if ui in ["streamlit", "gradio", "dash"]:
+            logger.info(f"🚀 Using official Databricks {ui.capitalize()} template")
+            from .databricks_template_integrator import generate_with_databricks_template
+
+            return generate_with_databricks_template(name, level, options, output_dir)
 
         # Validate level
         valid_levels = ["chatbot", "assistant"]

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "databricks-agent-toolkit"
-version = "0.2.2"
-description = "Unified toolkit for building production agents on Databricks - pre-wired integrations for LangGraph, LangChain, and custom agents"
+version = "0.3.0"
+description = "Unified toolkit for building production agents on Databricks - zero-frontend with official UI templates (Streamlit, Gradio, Dash)"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "Apache-2.0"}
@@ -124,7 +124,7 @@ Repository = "https://github.com/databricks/agent-toolkit"
 Issues = "https://github.com/databricks/agent-toolkit/issues"
 
 [tool.setuptools]
-packages.find = {where = ["."], include = ["databricks_agent_toolkit*", "shared*", "evaluation*", "memory*", "mcp*", "optimization*", "telemetry*", "monitoring*"]}
+packages.find = {where = ["."], include = ["databricks_agent_toolkit*", "shared*", "evaluation*", "memory*", "mcp*", "optimization*", "telemetry*", "monitoring*"], exclude = ["docs*", "tests*", "scripts*", "examples*", "deployment*", "config*", "databricks-app-templates-research*"]}
 
 [tool.setuptools.package-data]
 "*" = ["py.typed", "*.jinja2", "*.yaml", "*.yml"]

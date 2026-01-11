@@ -1,9 +1,10 @@
 """
 Unified Prompt Optimizer
 
-Combines DSPy and TextGrad for comprehensive prompt optimization:
+Combines DSPy, TextGrad, and GEPA for comprehensive prompt optimization:
 - Task prompts → DSPy
 - System prompts → TextGrad
+- Production prompts → GEPA (MLflow)
 - Automated pipelines
 - Multi-stage optimization
 - Unity Catalog integration
@@ -11,12 +12,14 @@ Combines DSPy and TextGrad for comprehensive prompt optimization:
 Configuration loaded from YAML (optimization.*)
 """
 
-from typing import List, Dict, Any, Optional, Literal
+from typing import List, Dict, Any, Optional, Literal, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from .dspy_optimizer import DSPyOptimizer, OptimizationResult
 from .textgrad_optimizer import TextGradOptimizer, SystemPromptResult
+from .gepa_optimizer import GepaOptimizer, GepaResult
+from .dspy_gepa_optimizer import DSPyGepaOptimizer, DSPyGepaResult
 
 
 @dataclass
@@ -53,10 +56,27 @@ class PromptOptimizer:
         )
     """
 
-    def __init__(self):
-        """Initialize prompt optimizer."""
+    def __init__(
+        self,
+        gepa_reflection_model: str = "databricks-claude-sonnet-4",
+        gepa_max_calls: int = 100,
+        dspy_gepa_auto: str = "medium"
+    ):
+        """
+        Initialize prompt optimizer.
+
+        Args:
+            gepa_reflection_model: Model for MLflow GEPA reflection
+            gepa_max_calls: Max optimization iterations for MLflow GEPA
+            dspy_gepa_auto: Budget for DSPy GEPA (light/medium/heavy)
+        """
         self.dspy_optimizer = DSPyOptimizer()
         self.textgrad_optimizer = TextGradOptimizer()
+        self.gepa_optimizer = GepaOptimizer(
+            reflection_model=gepa_reflection_model,
+            max_metric_calls=gepa_max_calls
+        )
+        self.dspy_gepa_optimizer = DSPyGepaOptimizer(auto=dspy_gepa_auto)
         self.optimization_history = []
 
     async def optimize(
@@ -128,6 +148,144 @@ class PromptOptimizer:
 
         else:
             raise ValueError(f"Unknown prompt_type: {prompt_type}")
+
+    def optimize_with_gepa(
+        self,
+        predict_fn: Callable,
+        train_data: List[Dict[str, Any]],
+        prompt_uris: List[str],
+        scorers: Optional[List[Any]] = None,
+        **kwargs
+    ) -> GepaResult:
+        """
+        Optimize prompts using GEPA (MLflow).
+
+        Best for:
+        - Production prompt optimization
+        - Multi-prompt agent workflows
+        - When you have real usage data
+        - Model migration scenarios
+
+        Args:
+            predict_fn: Agent function that uses the prompts
+            train_data: Training examples in MLflow format
+            prompt_uris: List of prompt URIs (e.g., ["prompts:/qa/1"])
+            scorers: Evaluation metrics (default: ["correctness"])
+            **kwargs: Additional GEPA arguments
+
+        Returns:
+            GepaResult with optimized prompts
+
+        Example:
+            # Define agent function
+            def my_agent(question: str) -> str:
+                prompt = mlflow.genai.load_prompt("prompts:/qa/1")
+                return llm.call(prompt.format(question=question))
+
+            # Prepare training data
+            train_data = [
+                {
+                    "inputs": {"question": "What is 2+2?"},
+                    "expectations": {"expected_response": "4"}
+                }
+            ]
+
+            # Optimize
+            optimizer = PromptOptimizer()
+            result = optimizer.optimize_with_gepa(
+                predict_fn=my_agent,
+                train_data=train_data,
+                prompt_uris=["prompts:/qa/1"],
+                scorers=["correctness", "safety"]
+            )
+        """
+        result = self.gepa_optimizer.optimize(
+            predict_fn=predict_fn,
+            train_data=train_data,
+            prompt_uris=prompt_uris,
+            scorers=scorers,
+            **kwargs
+        )
+
+        # Store in history
+        self.optimization_history.append({
+            "type": "gepa",
+            "result": result,
+            "timestamp": datetime.now()
+        })
+
+        return result
+
+    def optimize_with_dspy_gepa(
+        self,
+        program: Any,  # dspy.Module
+        trainset: List,
+        valset: Optional[List] = None,
+        metric: Optional[Callable] = None,
+        **kwargs
+    ) -> DSPyGepaResult:
+        """
+        Optimize DSPy programs using DSPy's GEPA optimizer.
+
+        Best for:
+        - DSPy programs (ChainOfThought, ReAct, etc.)
+        - Math/reasoning tasks
+        - Multi-step workflows
+        - When you want DSPy's programmatic control
+
+        Args:
+            program: DSPy Module to optimize
+            trainset: Training examples (list of dspy.Example)
+            valset: Validation examples (optional)
+            metric: Evaluation metric function
+            **kwargs: Additional DSPy GEPA arguments
+
+        Returns:
+            DSPyGepaResult with optimized program
+
+        Example:
+            import dspy
+
+            # Define DSPy program
+            class QA(dspy.Module):
+                def __init__(self):
+                    self.answer = dspy.ChainOfThought("question -> answer")
+
+                def forward(self, question):
+                    return self.answer(question=question)
+
+            # Prepare data
+            trainset = [
+                dspy.Example(question="2+2?", answer="4").with_inputs("question")
+            ]
+
+            # Optimize
+            optimizer = PromptOptimizer()
+            result = optimizer.optimize_with_dspy_gepa(
+                program=QA(),
+                trainset=trainset,
+                metric=lambda ex, pred, _: ex.answer == pred.answer
+            )
+
+            # Use optimized
+            optimized_qa = result.optimized_program
+        """
+        result = self.dspy_gepa_optimizer.optimize(
+            program=program,
+            trainset=trainset,
+            valset=valset,
+            metric=metric,
+            **kwargs
+        )
+
+        # Store in history
+        self.optimization_history.append({
+            "type": "dspy_gepa",
+            "result": result,
+            "timestamp": datetime.now()
+        })
+
+        return result
 
     async def _save_to_uc(self, result, prompt_type: str):
         """Save optimization result to Unity Catalog."""
