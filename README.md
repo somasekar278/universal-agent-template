@@ -188,14 +188,19 @@ rag:
 
 Your agent backend is **100% compatible** with all official Databricks UI templates:
 
-| **Framework** | **Best For** | **Template** |
-|---------------|--------------|--------------|
-| **Streamlit** | Quick prototypes, data apps | [streamlit-chatbot-app](https://github.com/databricks/app-templates/tree/main/streamlit-chatbot-app) |
-| **Gradio** | ML demos, simple interfaces | [gradio-chatbot-app](https://github.com/databricks/app-templates/tree/main/gradio-chatbot-app) |
-| **Plotly Dash** | Data dashboards with chat | [dash-chatbot-app](https://github.com/databricks/app-templates/tree/main/dash-chatbot-app) |
-| **Shiny** | Statistical apps, R users | [shiny-chatbot-app](https://github.com/databricks/app-templates/tree/main/shiny-chatbot-app) |
-| **React** | Production, enterprise | [e2e-chatbot-app](https://github.com/databricks/app-templates/tree/main/e2e-chatbot-app) |
-| **Next.js** | Modern production, SSR | [e2e-chatbot-app-next](https://github.com/databricks/app-templates/tree/main/e2e-chatbot-app-next) |
+| **Framework** | **Best For** | **Streaming** | **L2 Memory** | **Template** |
+|---------------|--------------|---------------|---------------|--------------|
+| **Streamlit** | Quick prototypes, data apps | ✅ | ✅ | [e2e-chatbot-app](https://github.com/databricks/app-templates/tree/main/e2e-chatbot-app) |
+| **Gradio** | ML demos, simple interfaces | ❌ | ❌ | [gradio-chatbot-app](https://github.com/databricks/app-templates/tree/main/gradio-chatbot-app) |
+| **Plotly Dash** | Data dashboards with chat | ❌ | ❌ | [dash-chatbot-app](https://github.com/databricks/app-templates/tree/main/dash-chatbot-app) |
+| **Shiny** | Statistical apps, R users | - | - | [shiny-chatbot-app](https://github.com/databricks/app-templates/tree/main/shiny-chatbot-app) |
+| **React** | Production, enterprise | - | - | [e2e-chatbot-app](https://github.com/databricks/app-templates/tree/main/e2e-chatbot-app) |
+| **Next.js** | Modern production, SSR | - | - | [e2e-chatbot-app-next](https://github.com/databricks/app-templates/tree/main/e2e-chatbot-app-next) |
+
+**Integrated Frameworks (v0.3.0):**
+- ✅ **Streamlit**: Full support (L1 + L2, streaming, memory)
+- ✅ **Gradio**: L1 only (batch mode)
+- ✅ **Dash**: L1 only (batch mode)
 
 **Why compatible?**
 We follow the **OpenAI API standard** via MLflow AgentServer (`/invocations` endpoint).
@@ -213,11 +218,20 @@ cp -r app-templates/streamlit-chatbot-app my-bot/frontend
 # 4. Deploy together!
 ```
 
-**Coming in v0.3.0:** One-command integration!
+**✨ NEW in v0.3.0:** One-command UI integration!
 ```bash
-dbat generate chatbot my-bot --ui=streamlit
-# ✅ Backend + official Streamlit UI, pre-configured!
+# L1 Chatbot - Choose any framework
+dat generate chatbot my-bot --ui streamlit   # ✅ Streaming support
+dat generate chatbot my-bot --ui gradio      # Batch only
+dat generate chatbot my-bot --ui dash        # Batch only
+
+# L2 Assistant - Streamlit only (memory + streaming require session state)
+dat generate assistant my-assistant          # Auto-uses Streamlit
 ```
+
+**Framework Support:**
+- **L1 (Chatbot)**: Streamlit, Gradio, Dash - all supported
+- **L2+ (Assistant/RAG)**: Streamlit only - official templates only support memory + streaming in Streamlit
 
 See [UI Integration Guide](docs/UI_FRAMEWORK_INTEGRATION.md) for details.
 

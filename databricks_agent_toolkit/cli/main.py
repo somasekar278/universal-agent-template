@@ -50,16 +50,14 @@ Examples:
   # 2. Deploy to Databricks
   cd my-bot && databricks bundle deploy && databricks bundle run
 
-  # Generate with custom model and UI framework
+  # L1 Chatbot - All UI frameworks supported
   dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui streamlit  # Streaming ✅
-  dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui gradio     # Simple UI
-  dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui dash       # Dash UI
+  dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui gradio     # Batch only
+  dat generate chatbot my-bot --model databricks-claude-sonnet-4 --ui dash       # Batch only
 
-  # Generate assistant with memory (L2)
-  dat generate assistant my-assistant
-
-  # Generate assistant with RAG enabled
-  dat generate assistant doc-bot --enable-rag
+  # L2 Assistant - Streamlit only (memory + streaming require session state)
+  dat generate assistant my-assistant                    # Uses Streamlit by default
+  dat generate assistant doc-bot --enable-rag            # With RAG support
 
   # Check authentication
   dat auth check
@@ -99,7 +97,7 @@ For more info: https://github.com/databricks/databricks-agent-toolkit
         "--ui",
         choices=["streamlit", "gradio", "dash", "fastapi", "none"],
         default="streamlit",
-        help="UI framework (default: streamlit). Note: Only Streamlit supports streaming. Gradio and Dash use batch responses.",
+        help="UI framework (default: streamlit). Streamlit: streaming + memory. Gradio/Dash: batch only, L1 only.",
     )
     generate_parser.add_argument("--output-dir", help="Custom output directory (default: ./<name>)")
 
@@ -157,6 +155,14 @@ def handle_generate(args):
     print(f"   UI: {args.ui} ({streaming_status})")
     if hasattr(args, "enable_rag") and args.enable_rag:
         print(f"   RAG: enabled")
+
+    # Validate L2+ requires Streamlit (official templates only support memory + streaming in Streamlit)
+    if args.level in ["assistant", "planner", "agentic_rag"] and args.ui != "streamlit":
+        print(f"\n❌ {args.level.upper()} (L2+) requires Streamlit UI")
+        print(f"   Reason: Official Databricks templates only support memory + streaming in Streamlit")
+        print(f"   Gradio/Dash lack built-in session persistence and streaming")
+        print(f"\n💡 Use: dat generate {args.level} {args.name} --ui streamlit")
+        sys.exit(1)
 
     try:
         generator = ScaffoldGenerator()
